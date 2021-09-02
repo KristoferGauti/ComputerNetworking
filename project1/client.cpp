@@ -3,7 +3,6 @@
 #include <arpa/inet.h>
 
 
-
 using namespace std;
 
 char buffer[4096]; 
@@ -42,13 +41,15 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
 
+	//Converts ASCII string port number from the args value listto an integer port number
 	int port_number = atoi(argv[2]);
 
 	//Create a socket
 	sockfd = socket(AF_INET, SOCK_STREAM, 0); 	//Create a IPv4 TCP socket
-	if (sockfd < 0) //Check if the socket creation failed
+	if (sockfd < 0) 							//Check if the socket creation failed
         printf("Creating a socket failed");
 
+	//Initiates a connection on the socket
 	establish_a_connection(port_number); 
 
 	//Get user input
@@ -56,9 +57,12 @@ int main(int argc, char* argv[]) {
 	while (*u_input != 'q') {
 		cin.getline(u_input, sizeof(u_input));
 
+		//Sends the user input to the socket
 		send(sockfd, u_input, sizeof(u_input), 0);
+		//receives a message from the socket and puts it in the buffer
 		recv(sockfd, buffer, sizeof(buffer), 0);
 		cout << buffer << endl;
+		//Clears the buffer and user input and sets all the items in the char array to 0
 		memset(buffer, 0, sizeof(buffer));
 		memset(u_input, 0, sizeof(u_input));
 	}
