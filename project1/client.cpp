@@ -8,15 +8,16 @@ using namespace std;
 char buffer[4096]; 
 int sockfd;
 
-int establish_a_connection(int port_number) {
+int establish_a_connection(char port_number[], char ip_addr[]) {
+	cout << ip_addr << endl;
 	//Establish a connection
-	struct sockaddr_in server_addr; 		//Declare Server Address
-	server_addr.sin_family = AF_INET; 		//IPv4 address family
-	server_addr.sin_addr.s_addr = INADDR_ANY;	//Bind Socket to all available interfaces					
-	server_addr.sin_port = htons(port_number);		//Port number
+	struct sockaddr_in server_addr; 					//Declare Server Address
+	server_addr.sin_family = AF_INET; 					//IPv4 address family
+	server_addr.sin_addr.s_addr = INADDR_ANY;			//Bind Socket to all available interfaces					
+	server_addr.sin_port = htons(atoi(port_number));	//Convert the ASCII port number to integer port number
 
 	//Check for errors for set socket address
-	if(inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr)<=0) 
+	if(inet_pton(AF_INET, ip_addr, &server_addr.sin_addr)<=0) 
     {
         printf("\nInvalid address/ Address not supported \n");
         return -1;
@@ -41,8 +42,6 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
 
-	//Converts ASCII string port number from the args value listto an integer port number
-	int port_number = atoi(argv[2]);
 
 	//Create a socket
 	sockfd = socket(AF_INET, SOCK_STREAM, 0); 	//Create a IPv4 TCP socket
@@ -50,7 +49,7 @@ int main(int argc, char* argv[]) {
         printf("Creating a socket failed");
 
 	//Initiates a connection on the socket
-	establish_a_connection(port_number); 
+	establish_a_connection(argv[1], argv[2]); 
 
 	//Get user input
 	char u_input[64];
