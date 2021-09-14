@@ -9,7 +9,7 @@ char buffer[4096];
 int sockfd;
 
 int establish_a_connection(char port_number[], char ip_addr[]) {
-	cout << ip_addr << endl;
+
 	//Establish a connection
 	struct sockaddr_in server_addr; 					//Declare Server Address
 	server_addr.sin_family = AF_INET; 					//IPv4 address family
