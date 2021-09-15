@@ -21,12 +21,13 @@ int main(int argc, char* argv[]) {
     int from_port_nr = atoi(argv[2]);
     int destination_port_number = atoi(argv[3]);
     struct sockaddr_in destaddr;
-    char buffer[1400];
-    strcpy(buffer, "Hi port!");
-    int buffer_length = strlen(buffer) + 1;
+    int buffer_length = 1500;
+    char send_buffer[buffer_length];
+    char receive_buffer[buffer_length];
+    strcpy(send_buffer, "Hi port!");
 
 
-    //Create a socket
+    //Create an udp socket which is connectionless (no three way handshake like TCP)
     if (udp_sock < 0) {
         perror("Unable to open socket!");
         exit(0);
@@ -36,25 +37,34 @@ int main(int argc, char* argv[]) {
     destaddr.sin_family = AF_INET;
     inet_aton(address, &destaddr.sin_addr);
 
+    //timeout socket check
+    struct timeval tv;
+    tv.tv_sec = 1; //seconds 
+    tv.tv_usec = 0; //microseconds
+    setsockopt(udp_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*) &tv, sizeof tv);
+
     destaddr.sin_port = htons(from_port_nr);
-    if (sendto(udp_sock, buffer, buffer_length, 0, (const struct sockaddr*)&destaddr, sizeof(destaddr)) < 0) {
-        perror("Failed");
-    }
-    
-    
-
-
-    for (int port = from_port_nr; port <= destination_port_number; port++) {    
-        if (sendto(udp_sock, buffer, buffer_length, 0, (const struct sockaddr*) &destaddr, sizeof(destaddr)) < 0) {
+    for (int port = from_port_nr; port <= destination_port_number; port++) {   
+        /*
+            some packets might be dropped, thus we need to send 5 times in a row to check on that
+            inner for loop to do that
+        */
+        if (sendto(udp_sock, send_buffer, buffer_length, 0, (const struct sockaddr*) &destaddr, sizeof(destaddr)) < 0) {
             perror("Failed to send!");
         }
         else {
-            cout << "sent to a socket!" << endl;
+            cout << "Sent to port number ";
+            cout << port << endl;
         }
-        //Receive the udp message from recvfrom then the assignment is done
+
+        //recvfrom is a blocking function. 
+        recvfrom(udp_sock, receive_buffer, buffer_length, 0, NULL, NULL); 
+        cout << receive_buffer << endl;
         
-        // int length = recvfrom(udp_sock, buffer, buffer_length, 0, NULL, NULL);
-        // cout << length << endl;
+        //print the port number when a msg is received
+        if (strlen(receive_buffer) > 0) {
+            cout << "port " << port << " is open!" << endl;
+        }
     }
 
     return 0;
