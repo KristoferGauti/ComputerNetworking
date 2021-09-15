@@ -38,6 +38,7 @@ int main(int argc, char* argv[]) {
     inet_aton(address, &destaddr.sin_addr);
 
     //timeout socket check
+    //code from https://newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout
     struct timeval tv;
     tv.tv_sec = 1; //seconds 
     tv.tv_usec = 0; //microseconds
