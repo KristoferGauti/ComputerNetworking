@@ -10,7 +10,7 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
     if(argc != 4) {
-		printf("Not enough arguments were given!\n");
+	    printf("Not enough arguments were given!\n");
         printf("Usage: ./scanner <ip address> <low port> <high port>\n");
         exit(0);
     }
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
 
-    //Comment this later I dunno what this does
+
     destaddr.sin_family = AF_INET;
     inet_aton(address, &destaddr.sin_addr);
 
