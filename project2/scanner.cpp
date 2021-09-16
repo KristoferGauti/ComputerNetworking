@@ -21,6 +21,8 @@ int main(int argc, char* argv[]) {
     int from_port_nr = atoi(argv[2]);
     int destination_port_number = atoi(argv[3]);
     struct sockaddr_in destaddr;
+    struct sockaddr_in recvaddr;
+    unsigned int recv_sock_length;
     int buffer_length = 1500;
     char send_buffer[buffer_length];
     char receive_buffer[buffer_length];
@@ -40,16 +42,16 @@ int main(int argc, char* argv[]) {
     //timeout socket check
     //code from https://newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout
     struct timeval tv;
-    tv.tv_sec = 1; //seconds 
-    tv.tv_usec = 0; //microseconds
+    tv.tv_sec = 0; //seconds 
+    tv.tv_usec = 10000; //microseconds
     setsockopt(udp_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*) &tv, sizeof tv);
 
     destaddr.sin_port = htons(from_port_nr);
+    /*
+        some packets might be dropped, thus we need to send 5 times in a row to check on that
+        inner for loop to do that
+    */
     for (int port = from_port_nr; port <= destination_port_number; port++) {   
-        /*
-            some packets might be dropped, thus we need to send 5 times in a row to check on that
-            inner for loop to do that
-        */
         if (sendto(udp_sock, send_buffer, buffer_length, 0, (const struct sockaddr*) &destaddr, sizeof(destaddr)) < 0) {
             perror("Failed to send!");
         }
@@ -59,7 +61,7 @@ int main(int argc, char* argv[]) {
         }
 
         //recvfrom is a blocking function. 
-        recvfrom(udp_sock, receive_buffer, buffer_length, 0, NULL, NULL); 
+        recvfrom(udp_sock, receive_buffer, buffer_length, 0, (sockaddr*) &recvaddr, &recv_sock_length); 
         cout << receive_buffer << endl;
         
         //print the port number when a msg is received
