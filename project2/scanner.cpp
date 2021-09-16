@@ -48,26 +48,27 @@ int main(int argc, char* argv[]) {
 
     /*
         some packets might be dropped, thus we need to send 5 times in a row to check on that
-        inner for loop to do that
+        The inner for loop does that
     */
     for (int port = from_port_nr; port <= destination_port_number; port++) {  
         destaddr.sin_port = htons(port);
-        if (sendto(udp_sock, send_buffer, buffer_length, 0, (const struct sockaddr*) &destaddr, sizeof(destaddr)) < 0) {
-            perror("Failed to send!");
-        }
-        else {
-            //recvfrom is a blocking function. 
-            recvfrom(udp_sock, receive_buffer, buffer_length, 0, (sockaddr*) &recvaddr, &recv_sock_length); 
-            //cout << receive_buffer << endl;
-
-            //print the port number when a msg is received
-            if (strlen(receive_buffer) > 0) {
-                cout << "port " << port << " is open!" << endl;
+        for (int i = 0; i <= 5; i++) {
+            if (sendto(udp_sock, send_buffer, buffer_length, 0, (const struct sockaddr*) &destaddr, sizeof(destaddr)) < 0) {
+                perror("Failed to send!");
             }
-            
-            //Clear the buffer
-            memset(receive_buffer, 0, sizeof(receive_buffer));
-            
+            else {
+                //recvfrom is a blocking function. 
+                recvfrom(udp_sock, receive_buffer, buffer_length, 0, (sockaddr*) &recvaddr, &recv_sock_length); 
+
+                //print the port number when a msg is received
+                if (strlen(receive_buffer) > 0) {
+                    cout << "port " << port << " is open!" << endl;
+                }
+
+                //Clear the buffer
+                memset(receive_buffer, 0, sizeof(receive_buffer));
+                
+            }
         }
 
 
