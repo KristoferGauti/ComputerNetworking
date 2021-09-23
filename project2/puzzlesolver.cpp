@@ -14,12 +14,19 @@ int main(int argc, char* argv[]) {
     }
 
     int udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
+
+    // Create an udp socket which is connectionless (no three way handshake like TCP)
+    if (udp_sock < 0) {
+        perror("Unable to open socket!");
+        exit(0);
+    }
+
     //struct sockaddr_in recvaddr;
     //unsigned int recv_sock_length;
-    int buffer_length = 64;
+    int buffer_length = 1024;
     char send_buffer[buffer_length];
     char receive_buffer[buffer_length];
-    strcpy(send_buffer, "Hi port!");
+    strcpy(send_buffer, "$group_89$");
 
 
     // Setup the address
@@ -29,6 +36,8 @@ int main(int argc, char* argv[]) {
 
 
     vector<int> ports = scan_ports(udp_sock, send_buffer, receive_buffer, buffer_length, 4000, 4100, destaddr);
+
+    send_to_server(ports[0], udp_sock, (char *) "$group_89$", receive_buffer, buffer_length, destaddr);
 
     print_list(ports);
 }

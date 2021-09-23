@@ -5,6 +5,7 @@
 #include <string.h>
 #include <thread>
 #include <vector>
+#include <algorithm>
 
 using namespace std;
 
