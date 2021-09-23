@@ -13,13 +13,22 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
 
+    int udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
+    //struct sockaddr_in recvaddr;
+    //unsigned int recv_sock_length;
+    int buffer_length = 64;
+    char send_buffer[buffer_length];
+    char receive_buffer[buffer_length];
+    strcpy(send_buffer, "Hi port!");
+
+
     // Setup the address
     struct sockaddr_in destaddr;
     destaddr.sin_family = AF_INET;
     inet_aton(argv[1], &destaddr.sin_addr);
 
 
-    list<int> ports = scan_ports(4000, 4100, destaddr);
+    vector<int> ports = scan_ports(udp_sock, send_buffer, receive_buffer, buffer_length, 4000, 4100, destaddr);
 
     print_list(ports);
 }

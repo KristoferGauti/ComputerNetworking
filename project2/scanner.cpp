@@ -3,15 +3,26 @@
 using namespace std;
 
 
-list<int> scan_ports(int from_port_nr, int destination_port_number, struct sockaddr_in destaddr) {
-    list<int> ports;
-    int udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    struct sockaddr_in recvaddr;
-    int buffer_length = 64;
-    unsigned int recv_sock_length;
-    char send_buffer[buffer_length];
-    char receive_buffer[buffer_length];
-    strcpy(send_buffer, "Hi port!");
+int send_to_server(int port, int udp_sock, char* send_buffer, char* receive_buffer, int buffer_length, sockaddr_in destaddr) {
+    destaddr.sin_port = htons(port);
+   
+    if (sendto(udp_sock, send_buffer, buffer_length, 0, (const struct sockaddr*) &destaddr, sizeof(destaddr)) < 0) {
+        return -1;
+    }
+
+    // recvfrom is a blocking function. 
+    if (recvfrom(udp_sock, receive_buffer, buffer_length, 0, (sockaddr*) NULL, NULL) > 0) {
+        cout << "port " << port << " is open!" << endl;
+        return 1;
+    }
+    else {
+        return -1;
+    }
+}
+
+vector<int> scan_ports(int udp_sock, char* send_buffer, char* receive_buffer, int buffer_length, int from_port_nr, int destination_port_number, struct sockaddr_in destaddr) {
+    vector<int> ports;
+    
 
     // Create an udp socket which is connectionless (no three way handshake like TCP)
     if (udp_sock < 0) {
@@ -31,18 +42,11 @@ list<int> scan_ports(int from_port_nr, int destination_port_number, struct socka
         The inner for loop does that. The more you send with UDP, the more reliable UDP becomes
     */
     for (int port = from_port_nr; port <= destination_port_number; port++) {  
-        destaddr.sin_port = htons(port);
         for (int i = 0; i <= 5; i++) {
-            if (sendto(udp_sock, send_buffer, buffer_length, 0, (const struct sockaddr*) &destaddr, sizeof(destaddr)) < 0) {
-                perror("Failed to send!");
-            }
-            else {
-                // recvfrom is a blocking function. 
-                if (recvfrom(udp_sock, receive_buffer, buffer_length, 0, (sockaddr*) &recvaddr, &recv_sock_length) > 0) {
-                    cout << "port " << port << " is open!" << endl;
-                    ports.push_back(port);
-                    break;
-                }
+            int received = send_to_server(port, udp_sock, send_buffer, receive_buffer, buffer_length, destaddr);
+            if (received > 0) {
+                ports.push_back(port);
+                break;
             }
         }
     }

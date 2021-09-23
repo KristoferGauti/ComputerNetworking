@@ -4,8 +4,9 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <thread>
-#include <list>
+#include <vector>
 
 using namespace std;
 
-list<int> scan_ports(int from_port_nr, int destination_port_number, struct sockaddr_in destaddr);
+int send_to_server(int port, int udp_sock, char* send_buffer, char* receive_buffer, int buffer_length, sockaddr_in destaddr);
+vector<int> scan_ports(int udp_sock, char* send_buffer, char* receive_buffer, int buffer_length, int from_port_nr, int destination_port_number, struct sockaddr_in destaddr);

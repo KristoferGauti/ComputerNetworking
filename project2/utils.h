@@ -1,4 +1,4 @@
 
-#include <list>
+#include <vector>
 
-void print_list(std::list<int> collection);
+void print_list(std::vector<int> vec);
