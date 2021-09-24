@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     int buffer_length = 1024;
     char send_buffer[buffer_length];
     char receive_buffer[buffer_length];
-    strcpy(send_buffer, "$group_89$");
+    strcpy(send_buffer, "Hi");
 
 
     // Setup the address
@@ -37,7 +37,11 @@ int main(int argc, char* argv[]) {
 
     vector<int> ports = scan_ports(udp_sock, send_buffer, receive_buffer, buffer_length, 4000, 4100, destaddr);
 
+
+ 
+    
+    print_list(ports);
     send_to_server(ports[0], udp_sock, (char *) "$group_89$", receive_buffer, buffer_length, destaddr);
 
-    print_list(ports);
+
 }
