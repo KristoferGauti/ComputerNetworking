@@ -2,7 +2,6 @@
 
 using namespace std;
 
-vector<int> ports;
 vector<int> sorted_port_list(4);
 void send_to_server(int port, int udp_sock, char* send_buffer, char* receive_buffer, int buffer_length, sockaddr_in destaddr) {
     for (int i = 0; i <= 5; i++) {
@@ -16,8 +15,8 @@ void send_to_server(int port, int udp_sock, char* send_buffer, char* receive_buf
 
         // recvfrom is a blocking function. 
         if (recvfrom(udp_sock, receive_buffer, buffer_length, 0, (sockaddr*) &recvaddr, &recv_sock_len) > 0) {
-            cout << "\n" << "Message: " << receive_buffer[0] << endl;
-            cout << "\n" << "Message: " << receive_buffer << endl;
+            cout << "Port number: " << htons(recvaddr.sin_port) << endl;
+            cout << "Message: " << receive_buffer << "\n" << endl;
             if (receive_buffer[0] == 'S') {
                 sorted_port_list[0] = htons(recvaddr.sin_port);
             }
@@ -29,10 +28,6 @@ void send_to_server(int port, int udp_sock, char* send_buffer, char* receive_buf
             }
             else if (receive_buffer[0] == 'T') {
                 sorted_port_list[3] = htons(recvaddr.sin_port);
-            }
-            cout << "port " << htons(recvaddr.sin_port) << " is open!" << endl;
-            if (find(ports.begin(), ports.end(), htons(recvaddr.sin_port)) == ports.end()) {
-                ports.push_back(htons(recvaddr.sin_port));
             }
             break;
         }

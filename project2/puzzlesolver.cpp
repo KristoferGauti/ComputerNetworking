@@ -13,9 +13,16 @@ int main(int argc, char* argv[]) {
         exit(0);
     }
 
+    // Create an udp socket which is connectionless (no three way handshake like TCP)
     int udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
 
-    // Create an udp socket which is connectionless (no three way handshake like TCP)
+    // Setup the address
+    struct sockaddr_in destaddr;
+    destaddr.sin_family = AF_INET;
+    inet_aton(argv[1], &destaddr.sin_addr);
+
+    //bind socket
+    bind(udp_sock, (const sockaddr*) &destaddr, sizeof(destaddr));
     if (udp_sock < 0) {
         perror("Unable to open socket!");
         exit(0);
@@ -29,19 +36,16 @@ int main(int argc, char* argv[]) {
     strcpy(send_buffer, "Hi");
 
 
-    // Setup the address
-    struct sockaddr_in destaddr;
-    destaddr.sin_family = AF_INET;
-    inet_aton(argv[1], &destaddr.sin_addr);
+    
 
 
     vector<int> ports = scan_ports(udp_sock, send_buffer, receive_buffer, buffer_length, 4000, 4100, destaddr);
-
-
- 
     
     print_list(ports);
-    send_to_server(ports[0], udp_sock, (char *) "$group_89$", receive_buffer, buffer_length, destaddr);
+
+    create_packet(ports[3], argv[1], destaddr);
+    //send_to_server(ports[3], udp_sock, (char *) "$group_89$", receive_buffer, buffer_length, destaddr); //Evil bit
+    //send_to_server(ports[0], udp_sock, (char *) "$group_89$", receive_buffer, buffer_length, destaddr);
 
 
 }
