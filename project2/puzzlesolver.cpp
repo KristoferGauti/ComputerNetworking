@@ -23,20 +23,16 @@ int main(int argc, char* argv[]) {
 
     //bind socket
     bind(udp_sock, (const sockaddr*) &destaddr, sizeof(destaddr));
+
     if (udp_sock < 0) {
         perror("Unable to open socket!");
         exit(0);
     }
 
-    //struct sockaddr_in recvaddr;
-    //unsigned int recv_sock_length;
     int buffer_length = 1024;
     char send_buffer[buffer_length];
     char receive_buffer[buffer_length];
     strcpy(send_buffer, "Hi");
-
-
-    
 
 
     //vector<int> ports = scan_ports(udp_sock, send_buffer, receive_buffer, buffer_length, 4000, 4100, destaddr);
@@ -44,7 +40,8 @@ int main(int argc, char* argv[]) {
     //print_list(ports);
 
     //create_packet(ports[3], argv[1], destaddr);
-    create_packet(4099, argv[1], destaddr);
+    create_packet(4099, argv[1]);
+
     //send_to_server(ports[3], udp_sock, (char *) "$group_89$", receive_buffer, buffer_length, destaddr); //Evil bit
     //send_to_server(ports[0], udp_sock, (char *) "$group_89$", receive_buffer, buffer_length, destaddr);
 

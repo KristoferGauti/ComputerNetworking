@@ -14,8 +14,7 @@
 using namespace std;
 
 void print_list(std::vector<int> vec);
-unsigned short csum(unsigned short *ptr,int nbytes);
-void create_packet(int port, char* address, sockaddr_in destaddr);
+void create_packet(int port, char* address);
 
 
 

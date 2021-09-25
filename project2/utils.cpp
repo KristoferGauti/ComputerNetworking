@@ -20,34 +20,8 @@ void print_list(vector<int> vec) {
     }
 }
 
-/*
-	Generic checksum calculation function
-*/
-unsigned short csum(unsigned short *ptr,int nbytes) 
-{
-	register long sum;
-	unsigned short oddbyte;
-	register short answer;
 
-	sum=0;
-	while(nbytes>1) {
-		sum+=*ptr++;
-		nbytes-=2;
-	}
-	if(nbytes==1) {
-		oddbyte=0;
-		*((u_char*)&oddbyte)=*(u_char*)ptr;
-		sum+=oddbyte;
-	}
-
-	sum = (sum>>16)+(sum & 0xffff);
-	sum = sum + (sum>>16);
-	answer=(short)~sum;
-	
-	return(answer);
-}
-
-void create_packet(int port, char* address, sockaddr_in destaddr) {
+void create_packet(int port, char* address) {
     //Create a raw socket of type IPPROTO
 	int raw_sock = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
     if (raw_sock < 0) {
@@ -55,6 +29,7 @@ void create_packet(int port, char* address, sockaddr_in destaddr) {
 		exit(1);
     }
 
+	// Set the header include option
 	int optval = 1;
 	int sso = setsockopt(raw_sock, IPPROTO_IP, IP_HDRINCL, &optval, sizeof(optval));
 
@@ -95,15 +70,12 @@ void create_packet(int port, char* address, sockaddr_in destaddr) {
 	iph->ip_tos = 0;
 	iph->ip_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(data);
 	iph->ip_id = htonl(69);	//Id of this packet
-	iph->ip_off = 0;
+	iph->ip_off = (!(0x0010 << 4));
 	iph->ip_ttl = 255;
 	iph->ip_p = IPPROTO_UDP;
-	iph->ip_sum = 0;		//Set to 0 before calculating checksum
+	iph->ip_sum = 0;		//Set the checksum 0 
 	iph->ip_src.s_addr = inet_addr (source_ip);	//Spoof the source ip address
 	iph->ip_dst.s_addr = sin.sin_addr.s_addr;
-
-    //Ip checksum
-	iph->ip_sum = csum ((unsigned short *) datagram, iph->ip_len);
 	
     //UDP header
     udph->uh_sport = htons(6666);
@@ -123,8 +95,6 @@ void create_packet(int port, char* address, sockaddr_in destaddr) {
 	
 	memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
 	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + strlen(data));
-	
-	udph->uh_sum = csum( (unsigned short*) pseudogram , psize);
 
 	if (sendto (raw_sock, datagram, iph->ip_len, 0, (struct sockaddr *) &sin, sizeof (sin)) < 0) {
         perror("sendto failed");
@@ -132,4 +102,32 @@ void create_packet(int port, char* address, sockaddr_in destaddr) {
 	else {
 		cout << "Packet sent wohoo" << endl;
 	}
+
+	// Create an udp socket to receive the data from the raw socket
+    int udp_receive_sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (udp_receive_sock < 0) {
+		perror("Failed to construct the receive udp socket");
+	}
+
+	struct sockaddr_in srcaddr, destaddr;
+	//Set source address
+    srcaddr.sin_family = AF_INET;
+    srcaddr.sin_addr.s_addr = INADDR_ANY;
+    srcaddr.sin_port = htons(6969);
+    bind(udp_receive_sock, (sockaddr *) &srcaddr, sizeof(srcaddr));
+    
+    //Set destination address
+    destaddr.sin_family      = AF_INET;
+    destaddr.sin_addr.s_addr = inet_addr(address);
+    destaddr.sin_port        = htons(port);
+	
+	char receive_buffer[1024];
+	struct sockaddr_in recvaddr;
+    unsigned int recv_sock_len;
+	if (recvfrom(udp_receive_sock, receive_buffer, 1024, 0, (sockaddr*) &recvaddr, &recv_sock_len) > 0) {
+		cout << receive_buffer << endl;
+	}
+
+
+
 }
