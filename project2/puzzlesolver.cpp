@@ -1,4 +1,4 @@
-// To run the program ./puzzlesolver 130.208.242.120
+// To run the program sudo ./puzzlesolver 130.208.242.120 10.3.15.154
 
 #include <iostream>
 #include "scanner.h"
@@ -7,9 +7,9 @@
 int main(int argc, char* argv[]) {
 
     // Checking if correct number of arguments are given
-    if(argc != 2) {
+    if(argc != 3) {
 	    printf("Incorrect number of arguments!\n");
-        printf("Usage: ./puzzlesolver <ip address> OR\n");       
+        printf("Usage: ./puzzlesolver <ip address> <your_local_ip_address>\n");       
         exit(0);
     }
 
@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
     //print_list(ports);
 
     //create_packet(ports[3], argv[1], destaddr);
-    create_packet(4099, argv[1]);
+    create_packet(4099, argv[1], argv[2]); //evil bit
 
     //send_to_server(ports[3], udp_sock, (char *) "$group_89$", receive_buffer, buffer_length, destaddr); //Evil bit
     //send_to_server(ports[0], udp_sock, (char *) "$group_89$", receive_buffer, buffer_length, destaddr);

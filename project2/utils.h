@@ -14,7 +14,7 @@
 using namespace std;
 
 void print_list(std::vector<int> vec);
-void create_packet(int port, char* address);
+void create_packet(int port, char* address, char* local_ip_address);
 
 
 

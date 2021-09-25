@@ -21,7 +21,7 @@ void print_list(vector<int> vec) {
 }
 
 
-void create_packet(int port, char* address) {
+void create_packet(int port, char* address, char* local_ip_address) {
     //Create a raw socket of type IPPROTO
 	int raw_sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
     if (raw_sock < 0) {
@@ -58,7 +58,7 @@ void create_packet(int port, char* address) {
 	strcpy(data , "$group_89$");
 
     //some address resolution
-	strcpy(source_ip , "10.3.15.154");
+	strcpy(source_ip , local_ip_address); 
 	
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
@@ -84,7 +84,7 @@ void create_packet(int port, char* address) {
     udph->uh_ulen = htons(sizeof(struct udphdr) + strlen(data)); //udp header size
 
     //Now the UDP checksum
-	psh.source_address = 0;
+	psh.source_address = 6969;
 	psh.dest_address = sin.sin_addr.s_addr;
 	psh.placeholder = 0;
 	psh.protocol = IPPROTO_UDP;
