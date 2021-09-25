@@ -84,7 +84,7 @@ void create_packet(int port, char* address) {
     udph->uh_ulen = htons(sizeof(struct udphdr) + strlen(data)); //udp header size
 
     //Now the UDP checksum
-	psh.source_address = inet_addr(source_ip);
+	psh.source_address = 0;
 	psh.dest_address = sin.sin_addr.s_addr;
 	psh.placeholder = 0;
 	psh.protocol = IPPROTO_UDP;
