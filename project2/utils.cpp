@@ -49,16 +49,23 @@ unsigned short csum(unsigned short *ptr,int nbytes)
 
 void create_packet(int port, char* address, sockaddr_in destaddr) {
     //Create a raw socket of type IPPROTO
-	int raw_sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+	int raw_sock = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
     if (raw_sock < 0) {
         perror("Failed to create raw socket");
 		exit(1);
     }
 
+	int optval = 1;
+	int sso = setsockopt(raw_sock, IPPROTO_IP, IP_HDRINCL, &optval, sizeof(optval));
+
+	if(sso < 0){
+		perror("Failed to set socket options with IP header included");
+		exit(0);
+	}
+
     //Datagram to represent the packet
     char datagram[4096] , source_ip[32] , *data , *pseudogram;
 	
-
     //Clear the the packet buffer
 	memset(datagram, 0, 4096); 
 
@@ -90,7 +97,7 @@ void create_packet(int port, char* address, sockaddr_in destaddr) {
 	iph->ip_id = htonl(69);	//Id of this packet
 	iph->ip_off = 0;
 	iph->ip_ttl = 255;
-	iph->ip_p = htons(IPPROTO_UDP);
+	iph->ip_p = IPPROTO_UDP;
 	iph->ip_sum = 0;		//Set to 0 before calculating checksum
 	iph->ip_src.s_addr = inet_addr (source_ip);	//Spoof the source ip address
 	iph->ip_dst.s_addr = sin.sin_addr.s_addr;

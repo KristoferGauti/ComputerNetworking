@@ -39,11 +39,12 @@ int main(int argc, char* argv[]) {
     
 
 
-    vector<int> ports = scan_ports(udp_sock, send_buffer, receive_buffer, buffer_length, 4000, 4100, destaddr);
+    //vector<int> ports = scan_ports(udp_sock, send_buffer, receive_buffer, buffer_length, 4000, 4100, destaddr);
     
-    print_list(ports);
+    //print_list(ports);
 
-    create_packet(ports[3], argv[1], destaddr);
+    //create_packet(ports[3], argv[1], destaddr);
+    create_packet(4099, argv[1], destaddr);
     //send_to_server(ports[3], udp_sock, (char *) "$group_89$", receive_buffer, buffer_length, destaddr); //Evil bit
     //send_to_server(ports[0], udp_sock, (char *) "$group_89$", receive_buffer, buffer_length, destaddr);
 
