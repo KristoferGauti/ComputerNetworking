@@ -15,13 +15,14 @@ struct pseudo_header
 
 /* Utility functions */
 
-pair<string, string> parse_message_get_checksum_srcip(char* receive_buffer) {
+pair<unsigned int, string> parse_message_get_checksum_srcip(char* receive_buffer) {
 	string message = string(receive_buffer);
-    string checksum_hex = message.substr(144,7);
+    string checksum_hex = message.substr(144,6);
+	unsigned int converted_checksum = stoul(checksum_hex, nullptr, 16);
     int ip_start_idx = (int)message.find("being ")+6;
 	int ip_end_idx = ((int)message.find("! (") ) - ip_start_idx;
     string source_addr = message.substr(ip_start_idx, ip_end_idx); 
-	return make_pair(checksum_hex, source_addr);
+	return make_pair(converted_checksum, source_addr);
 }
 
 void print_list(vector<int> vec) {
@@ -56,7 +57,7 @@ int create_raw_socket_headerincluded() {
 	return raw_sock;
 }
 
-void send_raw_socket(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr) {
+void send_raw_socket(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, int evil_bit, unsigned int check_sum) {
 	int raw_sock = create_raw_socket_headerincluded();
 
 	//Datagram to represent the packet
@@ -85,23 +86,22 @@ void send_raw_socket(int source_port, int dest_port, char* dest_ip_addr, char* s
     //some address resolution
 	strcpy(source_ip , source_ip_addr); 
 
-	
     //Fill in the IP Header there is something wrong according to Stephan
 	iph->ip_hl = 5;
 	iph->ip_v = 4;
 	iph->ip_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(data);
 	iph->ip_id = 69;
-	iph->ip_off = 1 << 15;
+	iph->ip_off = evil_bit;
 	iph->ip_ttl = 255;
 	iph->ip_p = IPPROTO_UDP;
-	iph->ip_sum = 0;							//Set the checksum 0 
+	iph->ip_sum = 0;							//TODO: reikna þenna gaur
 	iph->ip_src.s_addr = inet_addr (source_ip);	//Spoof the source ip address
 	iph->ip_dst.s_addr = sin.sin_addr.s_addr;
 	
     //UDP header
     udph->uh_sport = htons(source_port); //Port does not matter
     udph->uh_dport = htons(dest_port); 
-	udph->uh_sum = 0;
+	udph->uh_sum = 0; //TODO: reikna þenna gaur calculate_checksum(0x53f9)
     udph->uh_ulen = htons(sizeof(struct udphdr) + strlen(data)); //udp header size
 
 	//UDP checksum
@@ -130,7 +130,7 @@ void send_raw_socket(int source_port, int dest_port, char* dest_ip_addr, char* s
 void receivefrom_raw_socket(int port, char* dest_ip_addr, char* local_ip_address) {
 	//Send a raw socket with ipv4 header
 	int source_port_for_raw_socket = 6666;
-	send_raw_socket(source_port_for_raw_socket, port, dest_ip_addr, local_ip_address);
+	send_raw_socket(source_port_for_raw_socket, port, dest_ip_addr, local_ip_address, 1 << 15, 0);
 
 	//Create udp socket to receive the data from the raw socket
 	int udp_receive_sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -157,7 +157,7 @@ void receivefrom_raw_socket(int port, char* dest_ip_addr, char* local_ip_address
 		perror("Failed to construct the receive udp socket");
 	}
 
-	if(bind(udp_receive_sock, (const sockaddr*) &destaddr, socklen) < 0) {
+	if(::bind(udp_receive_sock, (const sockaddr*) &destaddr, socklen) < 0) {
 		perror("Failed to bind socket");
 	}
 
