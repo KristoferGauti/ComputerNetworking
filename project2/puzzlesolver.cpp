@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
 
     int buffer_length = 1024;
     char send_buffer[buffer_length];
-    char receive_buffer[buffer_length];
+    //char receive_buffer[buffer_length];
     strcpy(send_buffer, "Hi");
 
 
