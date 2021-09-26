@@ -49,7 +49,7 @@ void create_packet(int port, char* address, char* local_ip_address) {
 
 	//Data part ip for non linux users
 	data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
-	strcpy(data , "$group_89$");
+	strcpy(data , "$group_83$");
 
     //some address resolution
 	strcpy(source_ip , local_ip_address); 
@@ -86,6 +86,7 @@ void create_packet(int port, char* address, char* local_ip_address) {
     //Set destination address
     destaddr.sin_family = AF_INET;
     destaddr.sin_port = htons(6666);
+	destaddr.sin_addr.s_addr = inet_addr(source_ip);
 	socklen_t socklen = sizeof(destaddr);
 
 	// timeout socket check (https://newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout)
