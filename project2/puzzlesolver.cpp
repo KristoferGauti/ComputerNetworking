@@ -41,10 +41,12 @@ int main(int argc, char* argv[]) {
 
     //Part 2
     //receivefrom_raw_socket(4099, argv[1], argv[2]); //Evil bit
+
     send_to_server(4097, udp_sock, (char *) "$group_83$", receive_buffer, buffer_length, destaddr); //Checksum
     
     //Parse the message to extract the checksum hex and the source ip address
     pair<string, string> checksum_srcip = parse_message_get_checksum_srcip(receive_buffer);
+    //send_raw_socket();
     cout << checksum_srcip.first << endl;
     cout << checksum_srcip.second << endl;
     

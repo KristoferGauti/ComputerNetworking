@@ -13,13 +13,14 @@ struct pseudo_header
 	u_int16_t udp_length;
 };
 
+/* Utility functions */
 
 pair<string, string> parse_message_get_checksum_srcip(char* receive_buffer) {
 	string message = string(receive_buffer);
-    string checksum_hex = message.substr(143,7);
+    string checksum_hex = message.substr(144,7);
     int ip_start_idx = (int)message.find("being ")+6;
-    string source_addr = message.substr(ip_start_idx, 14); //find
-    source_addr.erase(remove(source_addr.begin(), source_addr.end(), '!'), source_addr.end());
+	int ip_end_idx = ((int)message.find("! (") ) - ip_start_idx;
+    string source_addr = message.substr(ip_start_idx, ip_end_idx); 
 	return make_pair(checksum_hex, source_addr);
 }
 
@@ -29,6 +30,13 @@ void print_list(vector<int> vec) {
         cout << vec[i] << endl;
     }
 }
+
+void calculate_checksum() {
+
+}
+
+
+/* Socket functions */
 
 int create_raw_socket_headerincluded() {
 	//Create a raw socket of type IPPROTO
@@ -48,7 +56,7 @@ int create_raw_socket_headerincluded() {
 	return raw_sock;
 }
 
-void send_raw_socket(int source_port, int dest_port, char* address, char* source_ip_addr) {
+void send_raw_socket(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr) {
 	int raw_sock = create_raw_socket_headerincluded();
 
 	//Datagram to represent the packet
@@ -68,7 +76,7 @@ void send_raw_socket(int source_port, int dest_port, char* address, char* source
 
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(dest_port);
-	sin.sin_addr.s_addr = inet_addr(address);
+	sin.sin_addr.s_addr = inet_addr(dest_ip_addr);
 
 	//Data part ip for non linux users
 	data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
@@ -108,10 +116,10 @@ void send_raw_socket(int source_port, int dest_port, char* address, char* source
 	}
 }
 
-void receivefrom_raw_socket(int port, char* address, char* local_ip_address) {
+void receivefrom_raw_socket(int port, char* dest_ip_addr, char* local_ip_address) {
 	//Send a raw socket with ipv4 header
 	int source_port_for_raw_socket = 6666;
-	send_raw_socket(source_port_for_raw_socket, port, address, local_ip_address);
+	send_raw_socket(source_port_for_raw_socket, port, dest_ip_addr, local_ip_address);
 
 	//Create udp socket to receive the data from the raw socket
 	int udp_receive_sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -148,5 +156,4 @@ void receivefrom_raw_socket(int port, char* address, char* local_ip_address) {
 	else {
 		cout << "No message" << endl;
 	}
-
 }
