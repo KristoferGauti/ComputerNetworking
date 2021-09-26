@@ -90,15 +90,26 @@ void send_raw_socket(int source_port, int dest_port, char* dest_ip_addr, char* s
 	iph->ip_hl = 5;
 	iph->ip_v = 4;
 	iph->ip_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(data);
+	iph->ip_id = 69;
 	iph->ip_off = 1 << 15;
 	iph->ip_ttl = 255;
 	iph->ip_p = IPPROTO_UDP;
+	iph->ip_sum = 0;							//Set the checksum 0 
+	iph->ip_src.s_addr = inet_addr (source_ip);	//Spoof the source ip address
 	iph->ip_dst.s_addr = sin.sin_addr.s_addr;
 	
     //UDP header
     udph->uh_sport = htons(source_port); //Port does not matter
     udph->uh_dport = htons(dest_port); 
+	udph->uh_sum = 0;
+    udph->uh_ulen = htons(sizeof(struct udphdr) + strlen(data)); //udp header size
 
+	//UDP checksum
+	psh.source_address = 6969;
+	psh.dest_address = sin.sin_addr.s_addr;
+	psh.placeholder = 0;
+	psh.protocol = IPPROTO_UDP;
+	psh.udp_length = htons(sizeof(struct udphdr) + strlen(data));
 
 	int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
 	pseudogram = (char*)malloc(psize);
