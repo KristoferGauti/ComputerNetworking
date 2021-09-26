@@ -13,8 +13,11 @@
 
 using namespace std;
 
+pair<string, string> parse_message_get_checksum_srcip(char* receive_buffer);
 void print_list(std::vector<int> vec);
-void create_packet(int port, char* address, char* local_ip_address);
+int create_raw_socket_headerincluded();
+void send_raw_socket(int source_port, int dest_port, char* address, char* source_ip_addr);
+void receivefrom_raw_socket(int port, char* address, char* local_ip_address);
 
 
 
