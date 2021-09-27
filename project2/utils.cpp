@@ -95,7 +95,7 @@ void evil_bit_part(int port, char* address, char* local_ip_address) {
 	}
 
     //Datagram to represent the packet
-    char datagram[4096] , source_ip[32] , *data , *pseudogram;
+    char datagram[4096] , source_ip[32] , *data;
 	
     //Clear the the packet buffer
 	memset(datagram, 0, 4096); 
@@ -124,7 +124,7 @@ void evil_bit_part(int port, char* address, char* local_ip_address) {
 	iph->ip_hl = 5;
 	iph->ip_v = 4;
 	iph->ip_tos = 0;
-	iph->ip_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(data);
+	iph->ip_len = sizeof(struct ip) + sizeof(struct udphdr) + strlen(data);
 	iph->ip_id = htons(69);	//Id of this packet
 	iph->ip_off = 1 << 15;
 	iph->ip_ttl = 255;
@@ -146,12 +146,6 @@ void evil_bit_part(int port, char* address, char* local_ip_address) {
 	psh.protocol = IPPROTO_UDP;
 	psh.udp_length = htons(sizeof(struct udphdr) + strlen(data));
 
-	int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
-	pseudogram = (char*)malloc(psize);
-	
-	memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
-	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + strlen(data));
-	
 	// Create an udp socket to receive the data from the raw socket
     int udp_receive_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (udp_receive_sock < 0) {
@@ -169,10 +163,11 @@ void evil_bit_part(int port, char* address, char* local_ip_address) {
 
 	if(bind(udp_receive_sock, (const sockaddr*) &destaddr, len) < 0) {
 		perror("Failed to bind socket");
+		exit(0);
 	}
 
 	//Send the raw socket
-	if (sendto (raw_sock, datagram, iph->ip_len, 0, (struct sockaddr *) &sin, sizeof (sin)) < 0) {
+	if (sendto (raw_sock, datagram, iph->ip_len, 0, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
         perror("sendto failed");
     }
 	else {
@@ -200,84 +195,116 @@ void evil_bit_part(int port, char* address, char* local_ip_address) {
 }
 
 //Checksum part
-void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, unsigned int check_sum) {
-	char datagram[4096], *data, *pseudogram; 									// Datagram to represent the packet
-	int raw_sock 		= create_raw_socket_headerincluded();
+void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, char* local_ip_address, unsigned int check_sum) {
+	char datagram[4096], *pseudogram; 									// Datagram to represent the packet
 	struct ip *iph 		= (struct ip *) datagram; 								// IP header
 	struct udphdr *udph = (struct udphdr *) (datagram + sizeof(struct ip)); 	// UDP header
 	struct sockaddr_in sin;
 	struct pseudo_header psh;
+	char* buffer = (char*) (datagram + sizeof(struct ip) + sizeof(struct udphdr));
 
 	// Set connection to server
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(dest_port);
 	sin.sin_addr.s_addr = inet_addr(dest_ip_addr);
+	
+	// clear the datagram
+	memset(datagram, 0, 4096);
+
+	// Fill in the IP Header 
+	iph->ip_hl = 5;
+	iph->ip_v = 4;
+	iph->ip_tos = 0;
+	iph->ip_len = htons(sizeof(struct ip) + sizeof(struct udphdr) + 2);
+	iph->ip_id = 69;
+	iph->ip_off = 0;
+	iph->ip_ttl = 255;
+	iph->ip_p = IPPROTO_UDP;
+	iph->ip_sum = 0;
+	iph->ip_src.s_addr = inet_addr(source_ip_addr);	// Spoof the source ip address
+	iph->ip_dst.s_addr = sin.sin_addr.s_addr;
+	
+	// Fill in the UDP header
+	udph->uh_sport = htons(source_port);
+	udph->uh_dport = htons(dest_port);
+	udph->uh_ulen = htons(sizeof(struct udphdr) + 2); // UDP header size
+	udph->uh_sum = 0;
+
+	// Create a pseudoheader to calculate the UDP checksum
+	psh.source_address = inet_addr(source_ip_addr);
+	psh.dest_address = sin.sin_addr.s_addr;
+	psh.placeholder = 0;
+	psh.protocol = IPPROTO_UDP;
+	psh.udp_length = htons(udph->uh_ulen);
+
+	iph->ip_sum = htons(csum((u_short *) datagram, iph->ip_len));
+	udph->uh_sum = htons((u_short) check_sum);
+
+	// Calculate checksum
+	int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + 2;
+	pseudogram = (char *) malloc(psize);
+	unsigned short data_checksum = csum((unsigned short*) pseudogram, psize);
+	memcpy(pseudogram, (char *) &psh , sizeof(struct pseudo_header));
+	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + 2);
+	memcpy(pseudogram + sizeof(struct pseudo_header) + sizeof(struct udphdr), buffer, 2);
+	memcpy(buffer, &data_checksum, 2);
+
+	
 	printf("correct:    0x%x\n", check_sum);
-	for (unsigned short int i = 0; i < 65536; i++) {
-		// Set data
-		memset(datagram, 0, sizeof(datagram));
-		char k[1] = {(char)(i + '0')};
-		data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
-        strcpy(data , (char *) k); 
-		
-
-		// Fill in the IP Header 
-		iph->ip_hl = 5;
-		iph->ip_v = 4;
-		iph->ip_len = sizeof(struct ip) + sizeof(struct udphdr) + strlen(data);
-		iph->ip_id = htons(69);
-		iph->ip_off = 0;
-		iph->ip_ttl = 255;
-		iph->ip_p = IPPROTO_UDP;
-		iph->ip_sum = csum((u_short *) datagram, iph->ip_len);
-		iph->ip_src.s_addr = inet_addr(source_ip_addr);	// Spoof the source ip address
-		iph->ip_dst.s_addr = sin.sin_addr.s_addr;
-		
-		// Fill in the UDP header
-		udph->uh_sport = htons(source_port);
-		udph->uh_dport = htons(dest_port);
-		udph->uh_ulen = htons(sizeof(struct udphdr) + strlen(data)); // UDP header size
-
-		// Create a pseudoheader to calculate the UDP checksum
-		psh.source_address = iph->ip_src.s_addr;
-		psh.dest_address = iph->ip_dst.s_addr;
-		psh.placeholder = 0;
-		psh.protocol = IPPROTO_UDP;
-		psh.udp_length = udph->uh_ulen;
-
-		// Calculate checksum
-		int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
-		pseudogram = (char *) malloc(psize);
-		memcpy(pseudogram, (char *) &psh , sizeof(struct pseudo_header));
-		memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + strlen(data));
-
-		udph->uh_sum = csum((u_short*) pseudogram , psize);
-
-		// Print for debug
-		if (udph->uh_sum == check_sum) {
-			break;
-		}
-	}
 	printf("calculated: 0x%x\n", udph->uh_sum);
 	
-	// Send the raw socket
-	if (sendto(raw_sock, datagram, iph->ip_len, 0, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-        perror("Failed to send the raw socket!");
-    }
+
+	int udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+	if (udp_socket < 0) {
+		perror("Failed to construct the receive udp socket");
+	}
+
+	struct sockaddr_in destaddr;
+
+    //Set destination address
+    destaddr.sin_family      = AF_INET;
+    destaddr.sin_addr.s_addr = inet_addr(local_ip_address);
+    destaddr.sin_port        = htons(dest_port);
+	socklen_t len = sizeof(destaddr);
+
+
+	if(bind(udp_socket, (const sockaddr*) &destaddr, len) < 0) {
+		perror("Failed to bind socket");
+	}
+	if (sendto(udp_socket, datagram, htons(iph->ip_len), 0, (struct sockaddr*) &sin, sizeof(sin)) < 0) {
+		perror("Failed to send the udp socket with the right checksum");
+	}
+	else {
+		std::cout << "Checksum ipv4 header packet sent" << std::endl;
+	}
+
+	// // timeout socket check
+    // // code from https://newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout
+    struct timeval tv;
+    tv.tv_sec = 0; //seconds 
+    tv.tv_usec = 30000; //microseconds
+    setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*) &tv, sizeof tv);
+
+	
+	char receive_buffer[1024];
+	//struct sockaddr_in recvaddr;
+    unsigned int recv_sock_len = sizeof(destaddr);
+	if (recvfrom(udp_socket, receive_buffer, sizeof(receive_buffer), 0, (sockaddr*) &destaddr, &recv_sock_len) > 0) {
+		std::cout << receive_buffer << std::endl;
+	}
+	else {
+		std::cout << "No message" << std::endl;
+	}
 }
 
 // void receivefrom_raw_socket(int port, char* dest_ip_addr, char* local_ip_address) {
-// 	// Send a raw socket with ipv4 header
-// 	int source_port_for_raw_socket = 6666;
-// 	send_raw_socket(source_port_for_raw_socket, port, dest_ip_addr, local_ip_address, 1 << 15, 0);
-
 // 	// Create udp socket to receive the data from the raw socket
 // 	int udp_receive_sock = socket(AF_INET, SOCK_DGRAM, 0);
 
 //     // Set destination address for the udp_receive_sock
 // 	struct sockaddr_in destaddr;
 //     destaddr.sin_family = AF_INET;
-//     destaddr.sin_port = htons(source_port_for_raw_socket);
+//     destaddr.sin_port = htons(port);
 // 	destaddr.sin_addr.s_addr = inet_addr(local_ip_address);
 // 	socklen_t socklen = sizeof(destaddr);
 
@@ -294,6 +321,7 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 // 	//  Create an udp socket to receive the data from the raw socket
 // 	if (udp_receive_sock < 0) {
 // 		perror("Failed to construct the receive udp socket");
+// 		exit(0);
 // 	}
 
 // 	if(bind(udp_receive_sock, (const sockaddr*) &destaddr, socklen) < 0) {
