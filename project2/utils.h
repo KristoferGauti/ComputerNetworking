@@ -11,12 +11,10 @@
 
 #include <vector>
 
-using namespace std;
-
 /* Utility functions */
-pair<unsigned int, string> parse_message_get_checksum_srcip(char* receive_buffer);
+std::pair<unsigned int, std::string> parse_message_get_checksum_srcip(char* receive_buffer);
 void print_list(std::vector<int> vec);
-void calculate_checksum();
+u_short csum(u_short *ptr,int nbytes);
 
 /* Socket functions */
 int create_raw_socket_headerincluded();

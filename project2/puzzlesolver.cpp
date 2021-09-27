@@ -19,12 +19,16 @@ int main(int argc, char* argv[]) {
     // Setup the address
     struct sockaddr_in destaddr;
     destaddr.sin_family = AF_INET;
+    destaddr.sin_port        = htons(6665);
+    destaddr.sin_addr.s_addr = inet_addr(argv[2]); // Get my ip
     inet_aton(argv[1], &destaddr.sin_addr);
 
-    //bind socket
-    if (::bind(udp_sock, (const sockaddr*) &destaddr, sizeof(destaddr)) < 0){
-        perror("Binding the udp socket failed!");
-    }
+
+    // //bind socket
+    // if (bind(udp_sock, (const sockaddr*) &destaddr, sizeof(destaddr)) < 0){
+    //     perror("Binding the udp socket failed!");
+    //     exit(0);
+    // }
 
     if (udp_sock < 0) {
         perror("Unable to open socket!");
@@ -38,20 +42,20 @@ int main(int argc, char* argv[]) {
 
 
     // //Part 1
-    // vector<int> ports = scan_ports(udp_sock, send_buffer, receive_buffer, buffer_length, 4000, 4100, destaddr);
+    // std::vector<int> ports = scan_ports(udp_sock, send_buffer, receive_buffer, buffer_length, 4000, 4100, destaddr);
     // print_list(ports);
 
     //Part 2
-    receivefrom_raw_socket(4099, argv[1], argv[2]); //Evil bit
+    //receivefrom_raw_socket(4099, argv[1], argv[2]); //Evil bit
 
     send_to_server(4097, udp_sock, (char *) "$group_83$", receive_buffer, buffer_length, destaddr); //Checksum
     
     //Parse the message to extract the checksum hex and the source ip address
-    pair<unsigned int, string> checksum_srcip = parse_message_get_checksum_srcip(receive_buffer);
+    std::pair<unsigned int, std::string> checksum_srcip = parse_message_get_checksum_srcip(receive_buffer);
     unsigned int checksum = checksum_srcip.first;
     char* source_ip = (char*) checksum_srcip.second.c_str();
-    cout << "Source address: " << source_ip << endl;
-    cout << "Checksum: " << checksum << endl;
+    // std::cout << "Source address: " << source_ip << std::endlendl;
+    // std::cout << "Checksum: " << checksum << std::endlendl;
     send_raw_socket(6667, 4097, argv[1], source_ip, 0, checksum);
 
     

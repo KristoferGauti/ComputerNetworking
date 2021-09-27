@@ -1,22 +1,20 @@
 #include "scanner.h"
 
-using namespace std;
-
-vector<int> sorted_port_list(4);
+std::vector<int> sorted_port_list(4);
 void send_to_server(int port, int udp_sock, char* send_buffer, char* receive_buffer, int buffer_length, sockaddr_in destaddr) {
     for (int i = 0; i <= 5; i++) {
         destaddr.sin_port = htons(port);
         struct sockaddr_in recvaddr;
         unsigned int recv_sock_len;
-    
+        std::cout << "hello" << std::endl;
         sendto(udp_sock, send_buffer, buffer_length, 0, (const struct sockaddr*) &destaddr, sizeof(destaddr));
-         
-        //cout << "send message: " << send_buffer << endl;
+        
+        //cout << "send message: " << send_buffer << std::endl;
 
         // recvfrom is a blocking function. 
         if (recvfrom(udp_sock, receive_buffer, buffer_length, 0, (sockaddr*) &recvaddr, &recv_sock_len) > 0) {
-            cout << "Port number: " << htons(recvaddr.sin_port) << endl;
-            cout << "Message: " << receive_buffer << "\n" << endl;
+            std::cout << "Port number: " << htons(recvaddr.sin_port) << std::endl;
+            std::cout << "Message: " << receive_buffer << "\n" << std::endl;
             if (receive_buffer[0] == 'S') {
                 sorted_port_list[0] = htons(recvaddr.sin_port);
             }
@@ -34,7 +32,7 @@ void send_to_server(int port, int udp_sock, char* send_buffer, char* receive_buf
     }
 }
 
-vector<int> scan_ports(int udp_sock, char* send_buffer, char* receive_buffer, int buffer_length, int from_port_nr, int destination_port_number, struct sockaddr_in destaddr) {
+std::vector<int> scan_ports(int udp_sock, char* send_buffer, char* receive_buffer, int buffer_length, int from_port_nr, int destination_port_number, struct sockaddr_in destaddr) {
     
 
     // timeout socket check
