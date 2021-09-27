@@ -76,7 +76,131 @@ int create_raw_socket_headerincluded() {
 	return raw_sock;
 }
 
-void send_raw_socket(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, int evil_bit, unsigned int check_sum) {
+// Evil bit
+void evil_bit_part(int port, char* address, char* local_ip_address) {
+    //Create a raw socket of type IPPROTO
+	int raw_sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+    if (raw_sock < 0) {
+        perror("Failed to create raw socket");
+		exit(1);
+    }
+
+	// Set the header include option
+	int optval = 1;
+	int sso = setsockopt(raw_sock, IPPROTO_IP, IP_HDRINCL, &optval, sizeof(optval));
+
+	if(sso < 0){
+		perror("Failed to set socket options with IP header included");
+		exit(0);
+	}
+
+    //Datagram to represent the packet
+    char datagram[4096] , source_ip[32] , *data , *pseudogram;
+	
+    //Clear the the packet buffer
+	memset(datagram, 0, 4096); 
+
+    //IP header
+	struct ip *iph = (struct ip *) datagram;
+	
+	//UDP header
+	struct udphdr *udph = (struct udphdr *) (datagram + sizeof (struct ip));
+	
+	struct sockaddr_in sin;
+	struct pseudo_header psh;
+	
+	//Data part ip for non linux users
+	data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
+	strcpy(data , "$group_89$");
+
+    //some address resolution
+	strcpy(source_ip , local_ip_address); 
+	
+	sin.sin_family = AF_INET;
+	sin.sin_port = htons(port);
+	sin.sin_addr.s_addr = inet_addr(address);
+	
+    //Fill in the IP Header there is something wrong according to Stephan
+	iph->ip_hl = 5;
+	iph->ip_v = 4;
+	iph->ip_tos = 0;
+	iph->ip_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(data);
+	iph->ip_id = htons(69);	//Id of this packet
+	iph->ip_off = 1 << 15;
+	iph->ip_ttl = 255;
+	iph->ip_p = IPPROTO_UDP;
+	iph->ip_sum = 0;		//Set the checksum 0 
+	iph->ip_src.s_addr = inet_addr (source_ip);	//Spoof the source ip address
+	iph->ip_dst.s_addr = sin.sin_addr.s_addr;
+	
+    //UDP header
+    udph->uh_sport = htons(6666);
+    udph->uh_dport = htons(port); 
+    udph->uh_sum = 0;
+    udph->uh_ulen = htons(sizeof(struct udphdr) + strlen(data)); //udp header size
+
+    //Now the UDP checksum
+	psh.source_address = 6969;
+	psh.dest_address = sin.sin_addr.s_addr;
+	psh.placeholder = 0;
+	psh.protocol = IPPROTO_UDP;
+	psh.udp_length = htons(sizeof(struct udphdr) + strlen(data));
+
+	int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
+	pseudogram = (char*)malloc(psize);
+	
+	memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
+	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + strlen(data));
+	
+	// Create an udp socket to receive the data from the raw socket
+    int udp_receive_sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (udp_receive_sock < 0) {
+		perror("Failed to construct the receive udp socket");
+	}
+
+	struct sockaddr_in destaddr;
+
+    //Set destination address
+    destaddr.sin_family      = AF_INET;
+    destaddr.sin_addr.s_addr = inet_addr(source_ip);
+    destaddr.sin_port        = htons(6666);
+	socklen_t len = sizeof(destaddr);
+
+
+	if(bind(udp_receive_sock, (const sockaddr*) &destaddr, len) < 0) {
+		perror("Failed to bind socket");
+	}
+
+	//Send the raw socket
+	if (sendto (raw_sock, datagram, iph->ip_len, 0, (struct sockaddr *) &sin, sizeof (sin)) < 0) {
+        perror("sendto failed");
+    }
+	else {
+		std::cout << "Packet sent wohoo" << std::endl;
+	}
+
+
+	// // timeout socket check
+    // // code from https://newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout
+    struct timeval tv;
+    tv.tv_sec = 0; //seconds 
+    tv.tv_usec = 30000; //microseconds
+    setsockopt(udp_receive_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*) &tv, sizeof tv);
+
+	
+	char receive_buffer[1024];
+	//struct sockaddr_in recvaddr;
+    unsigned int recv_sock_len = sizeof(destaddr);
+	if (recvfrom(udp_receive_sock, receive_buffer, 1024, 0, (sockaddr*) &destaddr, &recv_sock_len) > 0) {
+		std::cout << receive_buffer << std::endl;
+	}
+	else {
+		std::cout << "No message" << std::endl;
+	}
+}
+
+//Checksum part
+void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, unsigned int check_sum) {
 	char datagram[4096], *data, *pseudogram; 									// Datagram to represent the packet
 	int raw_sock 		= create_raw_socket_headerincluded();
 	struct ip *iph 		= (struct ip *) datagram; 								// IP header
@@ -102,7 +226,7 @@ void send_raw_socket(int source_port, int dest_port, char* dest_ip_addr, char* s
 		iph->ip_v = 4;
 		iph->ip_len = sizeof(struct ip) + sizeof(struct udphdr) + strlen(data);
 		iph->ip_id = htons(69);
-		iph->ip_off = evil_bit;
+		iph->ip_off = 0;
 		iph->ip_ttl = 255;
 		iph->ip_p = IPPROTO_UDP;
 		iph->ip_sum = csum((u_short *) datagram, iph->ip_len);
@@ -128,8 +252,6 @@ void send_raw_socket(int source_port, int dest_port, char* dest_ip_addr, char* s
 		memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + strlen(data));
 
 		udph->uh_sum = csum((u_short*) pseudogram , psize);
-		
-		//std::cout << udph->uh_sum << std::endl;
 
 		// Print for debug
 		if (udph->uh_sum == check_sum) {
@@ -144,45 +266,45 @@ void send_raw_socket(int source_port, int dest_port, char* dest_ip_addr, char* s
     }
 }
 
-void receivefrom_raw_socket(int port, char* dest_ip_addr, char* local_ip_address) {
-	// Send a raw socket with ipv4 header
-	int source_port_for_raw_socket = 6666;
-	send_raw_socket(source_port_for_raw_socket, port, dest_ip_addr, local_ip_address, 1 << 15, 0);
+// void receivefrom_raw_socket(int port, char* dest_ip_addr, char* local_ip_address) {
+// 	// Send a raw socket with ipv4 header
+// 	int source_port_for_raw_socket = 6666;
+// 	send_raw_socket(source_port_for_raw_socket, port, dest_ip_addr, local_ip_address, 1 << 15, 0);
 
-	// Create udp socket to receive the data from the raw socket
-	int udp_receive_sock = socket(AF_INET, SOCK_DGRAM, 0);
+// 	// Create udp socket to receive the data from the raw socket
+// 	int udp_receive_sock = socket(AF_INET, SOCK_DGRAM, 0);
 
-    // Set destination address for the udp_receive_sock
-	struct sockaddr_in destaddr;
-    destaddr.sin_family = AF_INET;
-    destaddr.sin_port = htons(source_port_for_raw_socket);
-	destaddr.sin_addr.s_addr = inet_addr(local_ip_address);
-	socklen_t socklen = sizeof(destaddr);
+//     // Set destination address for the udp_receive_sock
+// 	struct sockaddr_in destaddr;
+//     destaddr.sin_family = AF_INET;
+//     destaddr.sin_port = htons(source_port_for_raw_socket);
+// 	destaddr.sin_addr.s_addr = inet_addr(local_ip_address);
+// 	socklen_t socklen = sizeof(destaddr);
 
-	// Timeout socket check (https:// Newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout)
-    struct timeval tv;
-    tv.tv_sec = 0; // Seconds 
-    tv.tv_usec = 30000; // Microseconds
-    setsockopt(udp_receive_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*) &tv, sizeof tv);
+// 	// Timeout socket check (https:// Newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout)
+//     struct timeval tv;
+//     tv.tv_sec = 0; // Seconds 
+//     tv.tv_usec = 30000; // Microseconds
+//     setsockopt(udp_receive_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*) &tv, sizeof tv);
 
-	// Receive buffer and receive socket length for the recvfrom function
-	char receive_buffer[1024];
-    unsigned int recv_sock_len = sizeof(destaddr);
+// 	// Receive buffer and receive socket length for the recvfrom function
+// 	char receive_buffer[1024];
+//     unsigned int recv_sock_len = sizeof(destaddr);
 
-	//  Create an udp socket to receive the data from the raw socket
-	if (udp_receive_sock < 0) {
-		perror("Failed to construct the receive udp socket");
-	}
+// 	//  Create an udp socket to receive the data from the raw socket
+// 	if (udp_receive_sock < 0) {
+// 		perror("Failed to construct the receive udp socket");
+// 	}
 
-	if(bind(udp_receive_sock, (const sockaddr*) &destaddr, socklen) < 0) {
-		perror("Failed to bind socket");
-		exit(0);
-	}
+// 	if(bind(udp_receive_sock, (const sockaddr*) &destaddr, socklen) < 0) {
+// 		perror("Failed to bind socket");
+// 		exit(0);
+// 	}
 
-	if (recvfrom(udp_receive_sock, receive_buffer, 1024, 0, (sockaddr*) &destaddr, &recv_sock_len) > 0) {
-		std::cout << receive_buffer << std::endl;
-	}
-	else {
-		std::cout << "No message" << std::endl;
-	}
-}
+// 	if (recvfrom(udp_receive_sock, receive_buffer, 1024, 0, (sockaddr*) &destaddr, &recv_sock_len) > 0) {
+// 		std::cout << receive_buffer << std::endl;
+// 	}
+// 	else {
+// 		std::cout << "No message" << std::endl;
+// 	}
+// }

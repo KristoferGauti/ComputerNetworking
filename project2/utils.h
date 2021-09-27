@@ -18,7 +18,8 @@ u_short csum(u_short *ptr,int nbytes);
 
 /* Socket functions */
 int create_raw_socket_headerincluded();
-void send_raw_socket(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, int evil_bit, unsigned int check_sum);
+void evil_bit_part(int port, char* address, char* local_ip_address);
+void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, unsigned int check_sum);
 void receivefrom_raw_socket(int port, char* dest_ip_addr, char* local_ip_address);
 
 
