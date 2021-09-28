@@ -25,7 +25,7 @@ std::pair<unsigned int, std::string> parse_message_get_checksum_srcip(char* rece
 
 void print_list(std::vector<int> vec) {
     std::cout << "The ports that are in the list are as follows: \n";
-    for (int i = 0; i <= vec.size()-1; i++) {
+    for (int i = 0; i < vec.size(); i++) {
         std::cout << vec[i] << std::endl;
     }
 }
@@ -197,17 +197,12 @@ void evil_bit_part(int port, char* address, char* local_ip_address) {
 
 //Checksum part
 void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, char* local_ip_address, unsigned int check_sum) {
-	int udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
-	if (udp_socket < 0) {
-		perror("Failed to construct the receive udp socket");
-		exit(0);
-	}
-	
 	char datagram[4096], *data, *pseudogram; 									// Datagram to represent the packet
 	struct ip *iph 		= (struct ip *) datagram; 								// IP header
 	struct udphdr *udph = (struct udphdr *) (datagram + sizeof(struct ip)); 	// UDP header
 	struct sockaddr_in sin;
 	struct pseudo_header psh;
+	data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
 
 	// Set connection to server
 	sin.sin_family = AF_INET;
@@ -219,19 +214,19 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 	iph->ip_v = 4;
 	iph->ip_tos = 0;
 	iph->ip_len = htons(sizeof(struct ip) + sizeof(struct udphdr) + 2);
-	iph->ip_id = 69;
+	iph->ip_id = 100;
 	iph->ip_off = 0;
 	iph->ip_ttl = 255;
 	iph->ip_p = IPPROTO_UDP;
 	iph->ip_sum = 0;
 	iph->ip_src.s_addr = inet_addr(source_ip_addr);	// Spoof the source ip address
-	iph->ip_dst.s_addr = sin.sin_addr.s_addr;
+	iph->ip_dst.s_addr = 0;
 	
 	// Fill in the UDP header
 	udph->uh_sport = htons(source_port);
 	udph->uh_dport = htons(dest_port);
 	udph->uh_ulen = htons(10); // UDP header size
-	udph->uh_sum = htons((unsigned short) check_sum);
+	udph->uh_sum = 0; 
 
 
 	// Create a pseudoheader to calculate the UDP checksum
@@ -239,7 +234,10 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 	psh.dest_address = sin.sin_addr.s_addr;
 	psh.placeholder = 0;
 	psh.protocol = IPPROTO_UDP;
-	psh.udp_length = htons(sizeof(struct udphdr) + 2);
+	psh.udp_length = udph->uh_ulen;
+
+	iph->ip_sum = csum((unsigned short*) datagram, iph->ip_len);
+
 
 
 	// Calculate checksum
@@ -248,17 +246,30 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 	memcpy(pseudogram, (char *) &psh , sizeof(struct pseudo_header));
 	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + 2);
 
-	//udph->uh_sum = htons(csum((unsigned short*) pseudogram , psize));
 	unsigned short checksum_pseudogram = csum((unsigned short *) pseudogram, psize);
-	std::string* ptr = (std::string*) (datagram + sizeof(ip) + sizeof(udphdr));
-	memcpy(ptr, &checksum_pseudogram, 2);
-	iph->ip_sum = htons(csum((unsigned short*) datagram, iph->ip_len));
+	
+	unsigned short target_check = ~ntohs((unsigned short)check_sum);
+	unsigned short actual_check = ~checksum_pseudogram;
 
-	
-	
+	if (target_check >= actual_check) {
+		iph->ip_dst.s_addr = target_check - actual_check;
+	}
+	else {
+		iph->ip_dst.s_addr = target_check - actual_check - 1;
+	}
+
+	iph->ip_sum = csum((unsigned short*) datagram, iph->ip_len);
+	udph->uh_sum = ntohs((unsigned short) check_sum);
+
+	memcpy(data, &checksum_pseudogram, 2);
 	printf("correct:    0x%x\n", check_sum);
-	printf("calculated: 0x%x\n", udph->uh_sum);
 	
+	
+	int udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+	if (udp_socket < 0) {
+		perror("Failed to construct the receive udp socket");
+		exit(0);
+	}
 
 	struct sockaddr_in destaddr;
 
@@ -297,43 +308,3 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 		std::cout << "No message" << std::endl;
 	}
 }
-
-// void receivefrom_raw_socket(int port, char* dest_ip_addr, char* local_ip_address) {
-// 	// Create udp socket to receive the data from the raw socket
-// 	int udp_receive_sock = socket(AF_INET, SOCK_DGRAM, 0);
-
-//     // Set destination address for the udp_receive_sock
-// 	struct sockaddr_in destaddr;
-//     destaddr.sin_family = AF_INET;
-//     destaddr.sin_port = htons(port);
-// 	destaddr.sin_addr.s_addr = inet_addr(local_ip_address);
-// 	socklen_t socklen = sizeof(destaddr);
-
-// 	// Timeout socket check (https:// Newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout)
-//     struct timeval tv;
-//     tv.tv_sec = 0; // Seconds 
-//     tv.tv_usec = 30000; // Microseconds
-//     setsockopt(udp_receive_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*) &tv, sizeof tv);
-
-// 	// Receive buffer and receive socket length for the recvfrom function
-// 	char receive_buffer[1024];
-//     unsigned int recv_sock_len = sizeof(destaddr);
-
-// 	//  Create an udp socket to receive the data from the raw socket
-// 	if (udp_receive_sock < 0) {
-// 		perror("Failed to construct the receive udp socket");
-// 		exit(0);
-// 	}
-
-// 	if(bind(udp_receive_sock, (const sockaddr*) &destaddr, socklen) < 0) {
-// 		perror("Failed to bind socket");
-// 		exit(0);
-// 	}
-
-// 	if (recvfrom(udp_receive_sock, receive_buffer, 1024, 0, (sockaddr*) &destaddr, &recv_sock_len) > 0) {
-// 		std::cout << receive_buffer << std::endl;
-// 	}
-// 	else {
-// 		std::cout << "No message" << std::endl;
-// 	}
-// }
