@@ -14,32 +14,35 @@ struct pseudo_header
 /* Utility functions */
 
 int send_response_to_server(char* response, int response_size, char* message, int socket, sockaddr_in destaddr, int port_number) {
-    destaddr.sin_port = htons(port_number);
+    //destaddr.sin_port = htons(port_number);
 
-    if (sendto(socket, message, strlen(message) + 1, 0, (const struct sockaddr *) &destaddr, sizeof(destaddr)) < 0) {
+	socklen_t addrlen = sizeof(destaddr);
+    if (sendto(socket, message, response_size, 0, (const struct sockaddr *) &destaddr, addrlen) < 0) {
+		perror("ERROR in send_response_to_server");
         return -1;
     }
 
     bzero(response, sizeof(response));
 
-    if (recvfrom(socket, response, response_size, 0, NULL, NULL) > 0) {
+	struct sockaddr_in recvaddr;
+    unsigned int recv_sock_len;
+    if (recvfrom(socket, response, response_size, 0, (sockaddr*) &recvaddr, &recv_sock_len) > 0) {
         return 1;
     } else {
         return 0;
     }
 }
 
-void part3(int udp_sock,sockaddr_in destaddr, std::string evil_bit_secret_port, std::string secret_phrase, std::string hidden_port, int oracle_port)
+void part3(int udp_sock, sockaddr_in destaddr, std::string evil_bit_secret_port, std::string secret_phrase, std::string hidden_port, int oracle_port)
 {
     char message[1024];
-    std::string checksum_port_string = hidden_port + ","; //my boss port
-	std::string text = checksum_port_string + evil_bit_secret_port;
+    std::string text = hidden_port + "," + evil_bit_secret_port; //my boss port
     bzero(message, sizeof(message));
+	text.erase(std::remove(text.begin(), text.end(), '\n'), text.end());
+	std::cout << text << std::endl;
 
-    if (send_response_to_server(message, sizeof(message), (char *) text.c_str(),udp_sock,destaddr, oracle_port) < 0){
-        perror("ERROR in send_response_to_server");
-        exit(0);
-    }
+    int a = send_response_to_server(message, sizeof(message), (char *) text.c_str(), udp_sock, destaddr, oracle_port);
+        
 
     char temp_port[5];
     int formatted_port[128];
@@ -235,12 +238,6 @@ std::string evil_bit_part(int port, char* address, char* local_ip_address) {
 		exit(0);
 	}
 
-	//Send the raw socket
-	if (sendto (raw_sock, datagram, iph->ip_len, 0, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-        perror("sendto failed");
-    }
-
-
 	// // timeout socket check
     // // code from https://newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout
     struct timeval tv;
@@ -248,21 +245,24 @@ std::string evil_bit_part(int port, char* address, char* local_ip_address) {
     tv.tv_usec = 30000; //microseconds
     setsockopt(udp_receive_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*) &tv, sizeof tv);
 
-	
+
 	char receive_buffer[1024];
-	//struct sockaddr_in recvaddr;
-    unsigned int recv_sock_len = sizeof(destaddr);
-	if (recvfrom(udp_receive_sock, receive_buffer, 1024, 0, (sockaddr*) &destaddr, &recv_sock_len) > 0) {
-		std::cout << receive_buffer << std::endl;
-		//Extract the port number from the string
-		std::string message = std::string(receive_buffer);
-		std::string secret_port = message.substr(message.size() - 5);
-		return secret_port;
+	memset(receive_buffer, 0, sizeof(receive_buffer));
+	while(strlen(receive_buffer) == 0) {
+		if (sendto (raw_sock, datagram, iph->ip_len, 0, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
+			perror("sendto failed");
+		}
+
+		unsigned int recv_sock_len = sizeof(destaddr);
+		if (recvfrom(udp_receive_sock, receive_buffer, 1024, 0, (sockaddr*) &destaddr, &recv_sock_len) > 0) {
+			std::cout << receive_buffer << std::endl;
+			
+		}
 	}
-	else {
-		std::cout << "No message was received" << std::endl;
-	}
-	return "";
+	//Extract the port number from the string
+	std::string message = std::string(receive_buffer);
+	std::string secret_port = message.substr(message.size() - 5);
+	return secret_port;
 }
 
 //Checksum part
@@ -347,8 +347,14 @@ std::string checksum_part(int source_port, int dest_port, char* dest_ip_addr, ch
     destaddr.sin_family      = AF_INET;
     destaddr.sin_addr.s_addr = INADDR_ANY;
     destaddr.sin_port        = htons(dest_port);
-	socklen_t len = sizeof(destaddr);
 
+
+	// // timeout socket check
+	// // code from https://newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout
+	struct timeval tv;
+	tv.tv_sec = 0; //seconds 
+	tv.tv_usec = 30000; //microseconds
+	setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*) &tv, sizeof tv);
 
 	char receive_buffer[1024];
 	memset(receive_buffer, 0, sizeof(receive_buffer));
@@ -356,24 +362,10 @@ std::string checksum_part(int source_port, int dest_port, char* dest_ip_addr, ch
 		if (sendto(udp_socket, datagram, htons(iph->ip_len), 0, (struct sockaddr*) &sin, sizeof(sin)) < 0) {
 			perror("Failed to send the udp socket with the right checksum");
 		}
-		else {
-			std::cout << "Checksum ipv4 header packet sent" << std::endl;
-		}
-
-		// // timeout socket check
-		// // code from https://newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout
-		struct timeval tv;
-		tv.tv_sec = 0; //seconds 
-		tv.tv_usec = 30000; //microseconds
-		setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*) &tv, sizeof tv);
-
-		
+	
 		unsigned int recv_sock_len = sizeof(destaddr);
 		if (recvfrom(udp_socket, receive_buffer, sizeof(receive_buffer), 0, (sockaddr*) &destaddr, &recv_sock_len) > 0) {
 			std::cout << receive_buffer << std::endl;
-		}
-		else {
-			std::cout << "No message" << std::endl;
 		}
 	}
 	//Extract the secret phrase from the string
