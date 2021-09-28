@@ -54,16 +54,22 @@ int main(int argc, char* argv[]) {
     sendto(udp_sock, send_buffer, strlen(send_buffer), 0, (const struct sockaddr*) &destaddr, sizeof(destaddr));
     if (recvfrom(udp_sock, receive_buffer, buffer_length, 0, (sockaddr*) &recvaddr, &recv_sock_len) > 0) {
         std::cout << "Message: " << receive_buffer << "\n" << std::endl;
-        
+
         //Parse the message to extract the checksum hex and the source ip address
         std::pair<unsigned int, std::string> checksum_srcip = parse_message_get_checksum_srcip(receive_buffer);
         unsigned int checksum = checksum_srcip.first;
         char* source_ip = (char*) checksum_srcip.second.c_str();
-        checksum_part(6667, ports[0], argv[1], source_ip, argv[2], checksum);
+        std::string secret_phrase = checksum_part(6667, ports[0], argv[1], source_ip, argv[2], checksum);
+      
+
+        //Get the hidden port from My boss told me...
+        std::string hidden_port = std::to_string(ports[2]);
+
+        // part 3
+        std::cout << "\nPart 3 - Oracle port knocking" << std::endl;
+        std::cout << secret_phrase << std::endl;
+
+
+        part3(udp_sock, destaddr, evil_bit_secret_port, secret_phrase, hidden_port, ports[1]);
     }
-
-
-    // part 3
-    std::cout << "\nPart 3 - Oracle port knocking" << std::endl;
-    part3(udp_sock, destaddr, evil_bit_secret_port);
 }

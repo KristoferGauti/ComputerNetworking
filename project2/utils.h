@@ -13,7 +13,7 @@
 
 /* Utility functions */
 int send_response_to_server(char* response, int response_size, char* message, int socket, sockaddr_in destaddr, int port_number);
-void part3(int udp_sock, sockaddr_in destaddr, std::string evil_bit_secret_port);
+void part3(int udp_sock, sockaddr_in destaddr, std::string evil_bit_secret_port, std::string secret_phrase, std::string hidden_port, int oracle_port);
 std::pair<unsigned int, std::string> parse_message_get_checksum_srcip(char* receive_buffer);
 void print_list(std::vector<int> vec);
 u_short csum(u_short *ptr,int nbytes);
@@ -22,7 +22,7 @@ u_short csum(u_short *ptr,int nbytes);
 
 int create_raw_socket_headerincluded();
 std::string evil_bit_part(int port, char* address, char* local_ip_address);
-void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, char* local_ip_address, unsigned int check_sum);
+std::string checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, char* local_ip_address, unsigned int check_sum);
 void receivefrom_raw_socket(int port, char* dest_ip_addr, char* local_ip_address);
 
 

@@ -29,15 +29,14 @@ int send_response_to_server(char* response, int response_size, char* message, in
     }
 }
 
-void part3(int udp_sock,sockaddr_in destaddr, std::string evil_bit_secret_port)
+void part3(int udp_sock,sockaddr_in destaddr, std::string evil_bit_secret_port, std::string secret_phrase, std::string hidden_port, int oracle_port)
 {
     char message[1024];
-    std::string checksum_port_string = "4033,";
+    std::string checksum_port_string = hidden_port + ","; //my boss port
 	std::string text = checksum_port_string + evil_bit_secret_port;
-	std::cout << text << std::endl;
     bzero(message, sizeof(message));
 
-    if (send_response_to_server(message, sizeof(message), (char *) text.c_str(),udp_sock,destaddr, 4042) < 0){
+    if (send_response_to_server(message, sizeof(message), (char *) text.c_str(),udp_sock,destaddr, oracle_port) < 0){
         perror("ERROR in send_response_to_server");
         exit(0);
     }
@@ -67,7 +66,7 @@ void part3(int udp_sock,sockaddr_in destaddr, std::string evil_bit_secret_port)
 
 
     // TODO: take this secret phrase when we recieve it, but not hard code it
-    std::string secret_text = "Hey you, you’re finally awake. You were trying to cross the border right? Walked right into that Imperial ambush same as us and that thief over there.";
+    std::string secret_text = secret_phrase;
 
     int port_number;
     for (int i = 0; i < port_counter; i++) {
@@ -267,7 +266,7 @@ std::string evil_bit_part(int port, char* address, char* local_ip_address) {
 }
 
 //Checksum part
-void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, char* local_ip_address, unsigned int check_sum) {
+std::string checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, char* local_ip_address, unsigned int check_sum) {
 	char datagram[4096], *data, *pseudogram; 									// Datagram to represent the packet
 	struct ip *iph 		= (struct ip *) datagram; 								// IP header
 	struct udphdr *udph = (struct udphdr *) (datagram + sizeof(struct ip)); 	// UDP header
@@ -275,7 +274,6 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 	struct pseudo_header psh;
 	data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
 
-	std::cout << "Here" << std::endl;
 	// Set connection to server
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(dest_port);
@@ -285,7 +283,7 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 	iph->ip_hl = 5;
 	iph->ip_v = 4;
 	iph->ip_tos = 0;
-	iph->ip_len = htons(sizeof(struct ip) + sizeof(struct udphdr) + 2);
+	iph->ip_len = htons(sizeof(struct ip) + sizeof(struct udphdr));
 	iph->ip_id = 100;
 	iph->ip_off = 0;
 	iph->ip_ttl = 255;
@@ -297,13 +295,13 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 	// Fill in the UDP header
 	udph->uh_sport = htons(source_port);
 	udph->uh_dport = htons(dest_port);
-	udph->uh_ulen = htons(10); // UDP header size
+	udph->uh_ulen = htons(sizeof(struct udphdr)); // UDP header size
 	udph->uh_sum = 0; 
 
 
 	// Create a pseudoheader to calculate the UDP checksum
-	psh.source_address = inet_addr(source_ip_addr);
-	psh.dest_address = sin.sin_addr.s_addr;
+	psh.source_address = iph->ip_src.s_addr;
+	psh.dest_address = iph->ip_dst.s_addr;
 	psh.placeholder = 0;
 	psh.protocol = IPPROTO_UDP;
 	psh.udp_length = udph->uh_ulen;
@@ -313,10 +311,10 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 
 
 	// Calculate checksum
-	int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + 2;
+	int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr);
 	pseudogram = (char *) malloc(psize);
 	memcpy(pseudogram, (char *) &psh , sizeof(struct pseudo_header));
-	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + 2);
+	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr));
 
 	unsigned short checksum_pseudogram = csum((unsigned short *) pseudogram, psize);
 	
@@ -347,36 +345,40 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 
     //Set destination address
     destaddr.sin_family      = AF_INET;
-    destaddr.sin_addr.s_addr = INADDR_ANY; //inet_addr(local_ip_address);
+    destaddr.sin_addr.s_addr = INADDR_ANY;
     destaddr.sin_port        = htons(dest_port);
 	socklen_t len = sizeof(destaddr);
 
 
-	if(bind(udp_socket, (const sockaddr*) &destaddr, len) < 0) {
-		perror("Failed to bind checksum socket");
-	}
-
-	if (sendto(udp_socket, datagram, htons(iph->ip_len), 0, (struct sockaddr*) &sin, sizeof(sin)) < 0) {
-		perror("Failed to send the udp socket with the right checksum");
-	}
-	else {
-		std::cout << "Checksum ipv4 header packet sent" << std::endl;
-	}
-
-	// // timeout socket check
-    // // code from https://newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout
-    struct timeval tv;
-    tv.tv_sec = 0; //seconds 
-    tv.tv_usec = 30000; //microseconds
-    setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*) &tv, sizeof tv);
-
-	
 	char receive_buffer[1024];
-    unsigned int recv_sock_len = sizeof(destaddr);
-	if (recvfrom(udp_socket, receive_buffer, sizeof(receive_buffer), 0, (sockaddr*) &destaddr, &recv_sock_len) > 0) {
-		std::cout << receive_buffer << std::endl;
+	memset(receive_buffer, 0, sizeof(receive_buffer));
+	while(strlen(receive_buffer) == 0) {
+		if (sendto(udp_socket, datagram, htons(iph->ip_len), 0, (struct sockaddr*) &sin, sizeof(sin)) < 0) {
+			perror("Failed to send the udp socket with the right checksum");
+		}
+		else {
+			std::cout << "Checksum ipv4 header packet sent" << std::endl;
+		}
+
+		// // timeout socket check
+		// // code from https://newbedev.com/linux-is-there-a-read-or-recv-from-socket-with-timeout
+		struct timeval tv;
+		tv.tv_sec = 0; //seconds 
+		tv.tv_usec = 30000; //microseconds
+		setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*) &tv, sizeof tv);
+
+		
+		unsigned int recv_sock_len = sizeof(destaddr);
+		if (recvfrom(udp_socket, receive_buffer, sizeof(receive_buffer), 0, (sockaddr*) &destaddr, &recv_sock_len) > 0) {
+			std::cout << receive_buffer << std::endl;
+		}
+		else {
+			std::cout << "No message" << std::endl;
+		}
 	}
-	else {
-		std::cout << "No message" << std::endl;
-	}
+	//Extract the secret phrase from the string
+	std::string message = std::string(receive_buffer);
+	std::string secret_phrase = message.substr(message.find("\"H"), message.find("there."));
+	std::string the_real_msg = secret_phrase.replace(0, 1, "").replace(secret_phrase.size()-1, 1, "");
+	return the_real_msg;
 }
