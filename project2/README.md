@@ -15,8 +15,3 @@ Change your current working directory to project2 and run the program using this
 ```
     make && sudo ./puzzlesolver <src_port> <your_local_ip_address>
 ```
-
-# puzzlesolver.cpp
-
-line 38 - create the list of ports to send to
-line 44 - assign the secret port from the evil bit part to the variable evil_bit_secret_port
