@@ -13,6 +13,75 @@ struct pseudo_header
 
 /* Utility functions */
 
+int send_response_to_server(char* response, int response_size, char* message, int socket, sockaddr_in destaddr, int port_number) {
+    destaddr.sin_port = htons(port_number);
+
+    if (sendto(socket, message, strlen(message) + 1, 0, (const struct sockaddr *) &destaddr, sizeof(destaddr)) < 0) {
+        return -1;
+    }
+
+    bzero(response, sizeof(response));
+
+    if (recvfrom(socket, response, response_size, 0, NULL, NULL) > 0) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+void part3(int udp_sock,sockaddr_in destaddr, std::string evil_bit_secret_port)
+{
+    char message[1024];
+    std::string checksum_port_string = "4033,";
+	std::string text = checksum_port_string + evil_bit_secret_port;
+	std::cout << text << std::endl;
+    bzero(message, sizeof(message));
+
+    if (send_response_to_server(message, sizeof(message), (char *) text.c_str(),udp_sock,destaddr, 4042) < 0){
+        perror("ERROR in send_response_to_server");
+        exit(0);
+    }
+
+    char temp_port[5];
+    int formatted_port[128];
+    // format the port numbers into an easier format
+    int j = 0;
+    int port_counter = 0;
+    for (int i = 0; i < (int) sizeof(message); i++) {
+		if (message[i] == '\0' || message[i] == ',') {
+			temp_port[j] = *"\0";// new line
+			formatted_port[port_counter] = atoi(temp_port);
+			port_counter++;
+
+			if (message[i] == '\0'){
+				break;
+			}
+			j = 0;
+		}
+
+			else {
+			temp_port[j] = message[i];
+			j++;
+		}
+	}
+
+
+    // TODO: take this secret phrase when we recieve it, but not hard code it
+    std::string secret_text = "Hey you, you’re finally awake. You were trying to cross the border right? Walked right into that Imperial ambush same as us and that thief over there.";
+
+    int port_number;
+    for (int i = 0; i < port_counter; i++) {
+        port_number = formatted_port[i];
+        bzero(message, sizeof(message));
+        if (send_response_to_server(message, sizeof(message), (char *) secret_text.c_str(), udp_sock, destaddr, port_number) < 0){
+            perror("ERROR in send_response_to_server");
+            exit(0);
+        }
+        
+        std::cout <<  message << "\n" << std::endl;
+    }
+}
+
 std::pair<unsigned int, std::string> parse_message_get_checksum_srcip(char* receive_buffer) {
 	std::string message = std::string(receive_buffer);
     std::string checksum_hex = message.substr(144,6);
@@ -25,9 +94,9 @@ std::pair<unsigned int, std::string> parse_message_get_checksum_srcip(char* rece
 
 void print_list(std::vector<int> vec) {
     std::cout << "The ports that are in the list are as follows: \n";
-    for (int i = 0; i < vec.size(); i++) {
-        std::cout << vec[i] << std::endl;
-    }
+	for( auto port : vec ){
+		std::cout << port << std::endl;
+	}
 }
 
 // csum function code from https://www.binarytides.com/raw-sockets-c-code-linux/
@@ -77,7 +146,7 @@ int create_raw_socket_headerincluded() {
 }
 
 // Evil bit
-void evil_bit_part(int port, char* address, char* local_ip_address) {
+std::string evil_bit_part(int port, char* address, char* local_ip_address) {
     //Create a raw socket of type IPPROTO
 	int raw_sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
     if (raw_sock < 0) {
@@ -171,9 +240,6 @@ void evil_bit_part(int port, char* address, char* local_ip_address) {
 	if (sendto (raw_sock, datagram, iph->ip_len, 0, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
         perror("sendto failed");
     }
-	else {
-		std::cout << "Packet sent wohoo" << std::endl;
-	}
 
 
 	// // timeout socket check
@@ -189,10 +255,15 @@ void evil_bit_part(int port, char* address, char* local_ip_address) {
     unsigned int recv_sock_len = sizeof(destaddr);
 	if (recvfrom(udp_receive_sock, receive_buffer, 1024, 0, (sockaddr*) &destaddr, &recv_sock_len) > 0) {
 		std::cout << receive_buffer << std::endl;
+		//Extract the port number from the string
+		std::string message = std::string(receive_buffer);
+		std::string secret_port = message.substr(message.size() - 5);
+		return secret_port;
 	}
 	else {
-		std::cout << "No message" << std::endl;
+		std::cout << "No message was received" << std::endl;
 	}
+	return "";
 }
 
 //Checksum part
@@ -204,6 +275,7 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 	struct pseudo_header psh;
 	data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
 
+	std::cout << "Here" << std::endl;
 	// Set connection to server
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(dest_port);

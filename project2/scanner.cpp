@@ -11,7 +11,6 @@ void send_to_server(int port, int udp_sock, char* send_buffer, char* receive_buf
 
         // recvfrom is a blocking function. 
         if (recvfrom(udp_sock, receive_buffer, buffer_length, 0, (sockaddr*) &recvaddr, &recv_sock_len) > 0) {
-            std::cout << "Message: " << receive_buffer << "\n" << std::endl;
             if (receive_buffer[0] == 'S') {
                 sorted_port_list[0] = htons(recvaddr.sin_port);
             }
