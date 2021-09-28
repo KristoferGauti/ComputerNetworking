@@ -30,10 +30,10 @@ void print_list(std::vector<int> vec) {
     }
 }
 
-
-u_short csum(u_short *ptr, int nbytes) {
+// csum function code from https://www.binarytides.com/raw-sockets-c-code-linux/
+unsigned short csum(unsigned short *ptr, int nbytes) {
     long sum;
-    u_short oddbyte;
+    unsigned short oddbyte;
     short answer;
 
     sum = 0;
@@ -52,7 +52,7 @@ u_short csum(u_short *ptr, int nbytes) {
     sum = sum + (sum >> 16);
     answer = (short) ~sum;
 
-    return answer;
+    return (answer);
 }
 
 
@@ -120,7 +120,7 @@ void evil_bit_part(int port, char* address, char* local_ip_address) {
 	sin.sin_port = htons(port);
 	sin.sin_addr.s_addr = inet_addr(address);
 	
-    //Fill in the IP Header there is something wrong according to Stephan
+    //Fill in the IP Header
 	iph->ip_hl = 5;
 	iph->ip_v = 4;
 	iph->ip_tos = 0;
@@ -150,6 +150,7 @@ void evil_bit_part(int port, char* address, char* local_ip_address) {
     int udp_receive_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (udp_receive_sock < 0) {
 		perror("Failed to construct the receive udp socket");
+		exit(0);
 	}
 
 	struct sockaddr_in destaddr;
@@ -162,7 +163,7 @@ void evil_bit_part(int port, char* address, char* local_ip_address) {
 
 
 	if(bind(udp_receive_sock, (const sockaddr*) &destaddr, len) < 0) {
-		perror("Failed to bind socket");
+		perror("Failed to bind the evil bit socket");
 		exit(0);
 	}
 
@@ -196,21 +197,23 @@ void evil_bit_part(int port, char* address, char* local_ip_address) {
 
 //Checksum part
 void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, char* local_ip_address, unsigned int check_sum) {
-	char datagram[4096], *pseudogram; 									// Datagram to represent the packet
+	int udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+	if (udp_socket < 0) {
+		perror("Failed to construct the receive udp socket");
+		exit(0);
+	}
+	
+	char datagram[4096], *data, *pseudogram; 									// Datagram to represent the packet
 	struct ip *iph 		= (struct ip *) datagram; 								// IP header
 	struct udphdr *udph = (struct udphdr *) (datagram + sizeof(struct ip)); 	// UDP header
 	struct sockaddr_in sin;
 	struct pseudo_header psh;
-	char* buffer = (char*) (datagram + sizeof(struct ip) + sizeof(struct udphdr));
 
 	// Set connection to server
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(dest_port);
 	sin.sin_addr.s_addr = inet_addr(dest_ip_addr);
 	
-	// clear the datagram
-	memset(datagram, 0, 4096);
-
 	// Fill in the IP Header 
 	iph->ip_hl = 5;
 	iph->ip_v = 4;
@@ -223,54 +226,54 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 	iph->ip_sum = 0;
 	iph->ip_src.s_addr = inet_addr(source_ip_addr);	// Spoof the source ip address
 	iph->ip_dst.s_addr = sin.sin_addr.s_addr;
+	std::cout << source_ip_addr << std::endl;
 	
 	// Fill in the UDP header
-	udph->uh_sport = htons(source_port);
+	udph->uh_sport = source_port;
 	udph->uh_dport = htons(dest_port);
-	udph->uh_ulen = htons(sizeof(struct udphdr) + 2); // UDP header size
-	udph->uh_sum = 0;
+	udph->uh_ulen = htons(10); // UDP header size
+	udph->uh_sum = htons((unsigned short) check_sum);
+
 
 	// Create a pseudoheader to calculate the UDP checksum
 	psh.source_address = inet_addr(source_ip_addr);
 	psh.dest_address = sin.sin_addr.s_addr;
 	psh.placeholder = 0;
 	psh.protocol = IPPROTO_UDP;
-	psh.udp_length = htons(udph->uh_ulen);
+	psh.udp_length = htons(sizeof(struct udphdr) + 2);
 
-	iph->ip_sum = htons(csum((u_short *) datagram, iph->ip_len));
-	udph->uh_sum = htons((u_short) check_sum);
 
 	// Calculate checksum
 	int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + 2;
 	pseudogram = (char *) malloc(psize);
-	unsigned short data_checksum = csum((unsigned short*) pseudogram, psize);
 	memcpy(pseudogram, (char *) &psh , sizeof(struct pseudo_header));
 	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + 2);
-	memcpy(pseudogram + sizeof(struct pseudo_header) + sizeof(struct udphdr), buffer, 2);
-	memcpy(buffer, &data_checksum, 2);
 
+	//udph->uh_sum = htons(csum((unsigned short*) pseudogram , psize));
+	unsigned short checksum_pseudogram = csum((unsigned short *) pseudogram, psize);
+	std::string* ptr = (std::string*) (datagram + sizeof(ip) + sizeof(udphdr));
+	memcpy(ptr, &checksum_pseudogram, 2);
+	iph->ip_sum = htons(csum((unsigned short*) datagram, iph->ip_len));
+
+	
 	
 	printf("correct:    0x%x\n", check_sum);
 	printf("calculated: 0x%x\n", udph->uh_sum);
 	
 
-	int udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
-	if (udp_socket < 0) {
-		perror("Failed to construct the receive udp socket");
-	}
-
 	struct sockaddr_in destaddr;
 
     //Set destination address
     destaddr.sin_family      = AF_INET;
-    destaddr.sin_addr.s_addr = inet_addr(local_ip_address);
+    destaddr.sin_addr.s_addr = INADDR_ANY; //inet_addr(local_ip_address);
     destaddr.sin_port        = htons(dest_port);
 	socklen_t len = sizeof(destaddr);
 
 
 	if(bind(udp_socket, (const sockaddr*) &destaddr, len) < 0) {
-		perror("Failed to bind socket");
+		perror("Failed to bind checksum socket");
 	}
+
 	if (sendto(udp_socket, datagram, htons(iph->ip_len), 0, (struct sockaddr*) &sin, sizeof(sin)) < 0) {
 		perror("Failed to send the udp socket with the right checksum");
 	}
@@ -287,7 +290,6 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 
 	
 	char receive_buffer[1024];
-	//struct sockaddr_in recvaddr;
     unsigned int recv_sock_len = sizeof(destaddr);
 	if (recvfrom(udp_socket, receive_buffer, sizeof(receive_buffer), 0, (sockaddr*) &destaddr, &recv_sock_len) > 0) {
 		std::cout << receive_buffer << std::endl;

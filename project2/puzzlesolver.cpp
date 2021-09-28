@@ -121,7 +121,7 @@ int main(int argc, char* argv[]) {
 
     // struct sockaddr_in recvaddr;
     // unsigned int recv_sock_len;
-    // sendto(udp_sock, send_buffer, buffer_length, 0, (const struct sockaddr*) &destaddr, sizeof(destaddr));
+    // sendto(udp_sock, send_buffer, strlen(send_buffer), 0, (const struct sockaddr*) &destaddr, sizeof(destaddr));
     // if (recvfrom(udp_sock, receive_buffer, buffer_length, 0, (sockaddr*) &recvaddr, &recv_sock_len) > 0) {
     //     std::cout << "Message: " << receive_buffer << "\n" << std::endl;
     // }
