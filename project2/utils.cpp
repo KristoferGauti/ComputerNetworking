@@ -32,12 +32,10 @@ int send_response_to_server(char* response, int response_size, char* message, in
 void part3(int udp_sock, sockaddr_in destaddr, std::string evil_bit_secret_port, std::string secret_phrase, std::string hidden_port, int oracle_port)
 {
     char message[1024];
-    std::string text = hidden_port + "," + evil_bit_secret_port; //my boss port
+    std::string text = hidden_port + "," + evil_bit_secret_port;
     bzero(message, sizeof(message));
 
-
     send_response_to_server(message, sizeof(message), (char *) text.c_str(), udp_sock, destaddr, oracle_port);
-	std::cout << "MESSAGE: " << message << "\n" << std::endl;
 	
     char temp_port[5];
     int formatted_port[128];
@@ -96,7 +94,7 @@ void print_list(std::vector<int> vec) {
 	}
 }
 
-// csum function code from https://www.binarytides.com/raw-sockets-c-code-linux/
+// code from https://www.binarytides.com/raw-sockets-c-code-linux/
 unsigned short csum(unsigned short *ptr, int nbytes) {
     long sum;
     unsigned short oddbyte;
@@ -143,6 +141,7 @@ int create_raw_socket_headerincluded() {
 }
 
 // Evil bit
+// code from https://www.binarytides.com/raw-sockets-c-code-linux/
 std::string evil_bit_part(int port, char* address, char* local_ip_address) {
     //Create a raw socket of type IPPROTO
 	int raw_sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
@@ -261,6 +260,7 @@ std::string evil_bit_part(int port, char* address, char* local_ip_address) {
 }
 
 //Checksum part
+// code from https://www.binarytides.com/raw-sockets-c-code-linux/
 std::string checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* source_ip_addr, char* local_ip_address, unsigned int check_sum) {
 	char datagram[4096], *data, *pseudogram; 									// Datagram to represent the packet
 	struct ip *iph 		= (struct ip *) datagram; 								// IP header
