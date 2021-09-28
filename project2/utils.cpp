@@ -14,19 +14,15 @@ struct pseudo_header
 /* Utility functions */
 
 int send_response_to_server(char* response, int response_size, char* message, int socket, sockaddr_in destaddr, int port_number) {
-    //destaddr.sin_port = htons(port_number);
+    destaddr.sin_port = htons(port_number);
 
-	socklen_t addrlen = sizeof(destaddr);
-    if (sendto(socket, message, response_size, 0, (const struct sockaddr *) &destaddr, addrlen) < 0) {
-		perror("ERROR in send_response_to_server");
+    if (sendto(socket, message, strlen(message) + 1, 0, (const struct sockaddr *) &destaddr, sizeof(destaddr)) < 0) {
         return -1;
     }
 
     bzero(response, sizeof(response));
 
-	struct sockaddr_in recvaddr;
-    unsigned int recv_sock_len;
-    if (recvfrom(socket, response, response_size, 0, (sockaddr*) &recvaddr, &recv_sock_len) > 0) {
+    if (recvfrom(socket, response, response_size, 0, NULL, NULL) > 0) {
         return 1;
     } else {
         return 0;
@@ -38,12 +34,11 @@ void part3(int udp_sock, sockaddr_in destaddr, std::string evil_bit_secret_port,
     char message[1024];
     std::string text = hidden_port + "," + evil_bit_secret_port; //my boss port
     bzero(message, sizeof(message));
-	text.erase(std::remove(text.begin(), text.end(), '\n'), text.end());
-	std::cout << text << std::endl;
 
-    int a = send_response_to_server(message, sizeof(message), (char *) text.c_str(), udp_sock, destaddr, oracle_port);
-        
 
+    send_response_to_server(message, sizeof(message), (char *) text.c_str(), udp_sock, destaddr, oracle_port);
+	std::cout << "MESSAGE: " << message << "\n" << std::endl;
+	
     char temp_port[5];
     int formatted_port[128];
     // format the port numbers into an easier format
@@ -68,8 +63,8 @@ void part3(int udp_sock, sockaddr_in destaddr, std::string evil_bit_secret_port,
 	}
 
 
-    // TODO: take this secret phrase when we recieve it, but not hard code it
     std::string secret_text = secret_phrase;
+
 
     int port_number;
     for (int i = 0; i < port_counter; i++) {
