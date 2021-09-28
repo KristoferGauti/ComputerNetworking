@@ -52,7 +52,7 @@ unsigned short csum(unsigned short *ptr, int nbytes) {
     sum = sum + (sum >> 16);
     answer = (short) ~sum;
 
-    return (answer);
+    return answer;
 }
 
 
@@ -226,10 +226,9 @@ void checksum_part(int source_port, int dest_port, char* dest_ip_addr, char* sou
 	iph->ip_sum = 0;
 	iph->ip_src.s_addr = inet_addr(source_ip_addr);	// Spoof the source ip address
 	iph->ip_dst.s_addr = sin.sin_addr.s_addr;
-	std::cout << source_ip_addr << std::endl;
 	
 	// Fill in the UDP header
-	udph->uh_sport = source_port;
+	udph->uh_sport = htons(source_port);
 	udph->uh_dport = htons(dest_port);
 	udph->uh_ulen = htons(10); // UDP header size
 	udph->uh_sum = htons((unsigned short) check_sum);
