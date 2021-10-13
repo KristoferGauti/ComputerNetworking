@@ -1,10 +1,9 @@
-//
-// Simple chat client for TSAM-409
-//
-// Command line: ./chat_client 4000 
-//
-// Author: Jacky Mallett (jacky@ru.is)
-//
+/**
+ * Simple chat client for TSAM-409
+ * Command line: ./chat_client 4000 
+ * Modified code from a template provided by Jacky Mallett (jacky@ru.is)
+ * Authors: Bergur Tareq Tamimi & Kristofer Gauti Þórhallsson
+ */ 
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -64,7 +63,7 @@ int main(int argc, char* argv[])
 
    if(argc != 3)
    {
-        printf("Usage: chat_client <ip  port>\n");
+        printf("Usage: ./chat_client <your_local_ip_address> <ip port>\n");
         printf("Ctrl-C to terminate\n");
         exit(0);
    }
@@ -83,6 +82,7 @@ int main(int argc, char* argv[])
    struct hostent *server;
    server = gethostbyname(argv[1]);
 
+    //Setup server address
    bzero((char *) &serv_addr, sizeof(serv_addr));
    serv_addr.sin_family = AF_INET;
    bcopy((char *)server->h_addr,
@@ -94,7 +94,6 @@ int main(int argc, char* argv[])
 
    // Turn on SO_REUSEADDR to allow socket to be quickly reused after 
    // program exit.
-
    if(setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
    {
        printf("Failed to set SO_REUSEADDR for port %s\n", argv[2]);
