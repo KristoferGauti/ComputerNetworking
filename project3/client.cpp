@@ -32,14 +32,17 @@ void listenServer(int serverSocket) {
     char buffer[1025]; // Buffer for reading input
 
     while (true) {
+        // clear the buffer
         memset(buffer, 0, sizeof(buffer));
+        // read the response
         nread = read(serverSocket, buffer, sizeof(buffer));
 
-        // Server has dropped us
-        if (nread == 0){ 
+        // if there is no message then we stop
+        if (nread == 0) { // Server has dropped us
             printf("Over and Out\n");
             exit(0);
         }
+        // if there is message we read it from the buffer
         else if (nread > 0) {
             printf("%s\n", buffer);
         }
@@ -64,25 +67,25 @@ int main(int argc, char *argv[]) {
 
     hints.ai_family = AF_INET; // IPv4 only addresses
     hints.ai_socktype = SOCK_STREAM;
-
     memset(&hints, 0, sizeof(hints));
-
     if (getaddrinfo(argv[1], argv[2], &hints, &svr) != 0) {
         perror("getaddrinfo failed: ");
         exit(0);
     }
 
+    // hostent is used to store informations about a given host
     struct hostent *server;
-    server = gethostbyname(argv[1]);
+    server = gethostbyname(argv[1]); // gethostbyname() returns a pointer to the hostent
 
-    //Setup server address
+    // SERV_ADDR
+    // clear serv_addr
     bzero((char *)&serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr,
-          (char *)&serv_addr.sin_addr.s_addr,
-          server->h_length);
+    // copy h_addr to ther serv_addr.sin_addr.s_addr
+    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
     serv_addr.sin_port = htons(atoi(argv[2]));
 
+    // create server socket
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
     // Turn on SO_REUSEADDR to allow socket to be quickly reused after
@@ -92,6 +95,7 @@ int main(int argc, char *argv[]) {
         perror("setsockopt failed: ");
     }
 
+    // connect to server using the socket and serv_addr
     if (connect(serverSocket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
         // EINPROGRESS means that the connection is still being setup. Typically this
         // only occurs with non-blocking sockets. (The serverSocket above is explicitly
@@ -106,13 +110,15 @@ int main(int argc, char *argv[]) {
 
     // Listen and print replies from server
     std::thread serverThread(listenServer, serverSocket);
-
     finished = false;
     while (!finished) {
+        // clear buffer
         bzero(buffer, sizeof(buffer));
 
+        // take input on the buffer
         fgets(buffer, sizeof(buffer), stdin);
 
+        // send and use nwrite to see if there was any reply
         nwrite = send(serverSocket, buffer, strlen(buffer), 0);
 
         if (nwrite == -1) {
