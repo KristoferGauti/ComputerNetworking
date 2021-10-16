@@ -136,9 +136,9 @@ int main(int argc, char *argv[]) {
                 index++;
             }
             newBuffer[0] = 0x02;
-            newBuffer[strlen(buffer)] = 0x03;
+            newBuffer[strlen(buffer)+1] = 0x03;
         }
-
+        std::cout << newBuffer << std::endl;
         // send and use nwrite to see if there was any reply
         nwrite = send(serverSocket, newBuffer, strlen(newBuffer), 0);
 

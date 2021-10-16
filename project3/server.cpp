@@ -286,7 +286,7 @@ int main(int argc, char *argv[]) {
 							}*/
 							//std::cout << buffer[0] << " : " << buffer[strlen(buffer) - 4] << std::endl;
 							clientCommand(client->sock, &openSockets, &maxfds, buffer);
-							printf("Buffer: %x",  buffer);
+							//std::cout << "Buffer: " << std::hex << buffer << std::endl;
 						//}
 					}
 				}
