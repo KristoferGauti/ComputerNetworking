@@ -115,8 +115,9 @@ int main(int argc, char *argv[]) {
     std::thread serverThread(listenServer, serverSocket);
     finished = false;
     while (!finished) {
-        // clear buffer
+        // clear buffers
         bzero(buffer, sizeof(buffer));
+        bzero(newBuffer, sizeof(newBuffer));
 
         // take input on the buffer
         fgets(buffer, sizeof(buffer), stdin);
@@ -127,6 +128,7 @@ int main(int argc, char *argv[]) {
                 index++;
             }
             newBuffer[0] = 0x02;
+            strcpy(newBuffer, buffer);
             newBuffer[sizeof(buffer)] = 0x03;
             //std::cout << newBuffer << std::endl;
         }
@@ -136,9 +138,11 @@ int main(int argc, char *argv[]) {
                 index++;
             }
             newBuffer[0] = 0x02;
+            strcpy(newBuffer, buffer);
             newBuffer[strlen(buffer)+1] = 0x03;
         }
-        std::cout << newBuffer << std::endl;
+        std::cout << "newBuffer: " << newBuffer << std::endl;
+
         // send and use nwrite to see if there was any reply
         nwrite = send(serverSocket, newBuffer, strlen(newBuffer), 0);
 
