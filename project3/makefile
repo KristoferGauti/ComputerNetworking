@@ -1,9 +1,9 @@
 CC = g++
 CPP = c++11
-all: clean chat_client chat_server
-chat_client:
-	${CC} -Wall -std=${CPP} client.cpp -o chat_client
-chat_server:
-	${CC} -Wall -std=${CPP} server.cpp -o chat_server
+all: clean client server
+client:
+	${CC} -Wall -std=${CPP} client.cpp -o client
+server:
+	${CC} -Wall -std=${CPP} server.cpp -o server
 clean:
-	rm -f core chat_client chat_server
+	rm -f core client server
