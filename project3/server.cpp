@@ -2,7 +2,7 @@
  * Simple chat server for TSAM-409
  * Command line: ./chat_server 4000 
  * Modified code from a template provided by Jacky Mallett (jacky@ru.is)
- * Authors: Bergur Tareq Tamimi & Kristofer Gauti Þórhallsson
+ * Authors: Anton Björn Mayböck Helgason, Bergur Tareq Tamimi & Kristofer Gauti Þórhallsson
  */
 #include <stdio.h>
 #include <errno.h>
