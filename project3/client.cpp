@@ -123,25 +123,25 @@ int main(int argc, char *argv[]) {
         fgets(buffer, sizeof(buffer), stdin);
 
         if(strlen(buffer) <= sizeof(buffer) - 2){
-            for(int i = 2; i < strlen(buffer); i++){
+            newBuffer[0] = 0x02;
+            for(int i = 1; i < strlen(buffer); i++){
                 newBuffer[i] = buffer[index];
                 index++;
             }
-            newBuffer[0] = 0x02;
-            strcpy(newBuffer, buffer);
-            newBuffer[sizeof(buffer)] = 0x03;
+            newBuffer[strlen(buffer)] = 0x03;
             //std::cout << newBuffer << std::endl;
         }
         else{
-            for(int i = 2; i < strlen(buffer); i++){
+            newBuffer[0] = 0x02;
+            for(int i = 1; i < strlen(buffer); i++){
                 newBuffer[i] = buffer[index];
                 index++;
             }
-            newBuffer[0] = 0x02;
-            strcpy(newBuffer, buffer);
-            newBuffer[strlen(buffer)+1] = 0x03;
+            newBuffer[strlen(buffer)] = 0x03;
         }
-        std::cout << "newBuffer: " << newBuffer << std::endl;
+        std::cout << "newBuffer[0]: " << newBuffer[0] << std::endl;
+        std::cout << "newBuffer[middle]: " << newBuffer << std::endl;
+        std::cout << "newBuffer[last]: " << newBuffer[strlen(buffer)] << std::endl;
 
         // send and use nwrite to see if there was any reply
         nwrite = send(serverSocket, newBuffer, strlen(newBuffer), 0);

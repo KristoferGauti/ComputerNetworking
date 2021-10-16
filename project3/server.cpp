@@ -267,8 +267,8 @@ int main(int argc, char *argv[]) {
 						}
 						// We don't check for -1 (nothing received) because select()
 						// only triggers if there is something on the socket for us.
-						/*else {
-							if(buffer[0] == 0x02 && buffer[strlen(buffer) - 4] == 0x03)
+						else {
+							if(buffer[0] == 0x02 && buffer[sizeof(buffer)-1] == 0x03)
 							{
 								char newBuffer[strlen(buffer)];
 								int index = 0;
@@ -283,11 +283,11 @@ int main(int argc, char *argv[]) {
 							else
 							{
 								std::cout << "Nothing received" << std::endl;
-							}*/
+							}
 							//std::cout << buffer[0] << " : " << buffer[strlen(buffer) - 4] << std::endl;
 							clientCommand(client->sock, &openSockets, &maxfds, buffer);
 							//std::cout << "Buffer: " << std::hex << buffer << std::endl;
-						//}
+						}
 					}
 				}
 				// Remove client from the clients list
