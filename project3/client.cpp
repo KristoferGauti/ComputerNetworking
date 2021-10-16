@@ -58,6 +58,9 @@ int main(int argc, char *argv[]) {
     char buffer[1025];            // buffer for writing to server
     bool finished;
     int set = 1; // Toggle for setsockopt
+    int index = 0;      
+    char newBuffer[2050];
+
 
     if (argc != 3) {
         printf("Usage: ./chat_client <your_local_ip_address> <ip port>\n");
@@ -118,8 +121,26 @@ int main(int argc, char *argv[]) {
         // take input on the buffer
         fgets(buffer, sizeof(buffer), stdin);
 
+        if(strlen(buffer) <= sizeof(buffer) - 2){
+            for(int i = 2; i < strlen(buffer); i++){
+                newBuffer[i] = buffer[index];
+                index++;
+            }
+            newBuffer[0] = 0x02;
+            newBuffer[sizeof(buffer)] = 0x03;
+            //std::cout << newBuffer << std::endl;
+        }
+        else{
+            for(int i = 2; i < strlen(buffer); i++){
+                newBuffer[i] = buffer[index];
+                index++;
+            }
+            newBuffer[0] = 0x02;
+            newBuffer[strlen(buffer)] = 0x03;
+        }
+
         // send and use nwrite to see if there was any reply
-        nwrite = send(serverSocket, buffer, strlen(buffer), 0);
+        nwrite = send(serverSocket, newBuffer, strlen(newBuffer), 0);
 
         if (nwrite == -1) {
             perror("send() to server failed: ");

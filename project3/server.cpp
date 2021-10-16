@@ -139,7 +139,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 	while (stream >> token)
 		tokens.push_back(token);
-
 	if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 2)) {
 		clients[clientSocket]->name = tokens[1];
 	}
@@ -268,10 +267,27 @@ int main(int argc, char *argv[]) {
 						}
 						// We don't check for -1 (nothing received) because select()
 						// only triggers if there is something on the socket for us.
-						else {
-							std::cout << buffer << std::endl;
+						/*else {
+							if(buffer[0] == 0x02 && buffer[strlen(buffer) - 4] == 0x03)
+							{
+								char newBuffer[strlen(buffer)];
+								int index = 0;
+								for(int i = 2; i < sizeof(newBuffer)-3; i++){
+									newBuffer[index] = buffer[i];
+									index++;
+								}
+								std::cout << "NewBuffer: " << newBuffer << std::endl;
+								clientCommand(client->sock, &openSockets, &maxfds, buffer);
+
+							}
+							else
+							{
+								std::cout << "Nothing received" << std::endl;
+							}*/
+							//std::cout << buffer[0] << " : " << buffer[strlen(buffer) - 4] << std::endl;
 							clientCommand(client->sock, &openSockets, &maxfds, buffer);
-						}
+							printf("Buffer: %x",  buffer);
+						//}
 					}
 				}
 				// Remove client from the clients list
