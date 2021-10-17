@@ -131,23 +131,28 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds) {
 
 // Process command from client on the server
 void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer) {
+	std::cout << "NewBuffer: " << buffer << std::endl;
 	std::vector<std::string> tokens(4);
 	std::string token;
 
 	// Split command from client into tokens for parsing
 	std::stringstream stream(buffer);
-	int j = 0;     
-	for (int i = 0; i <= sizeof(buffer); i++)     
+	int j = 0;    
+	// std::cout << "sizeof buffer: " << sizeof(buffer) << std::endl; 
+	// std::cout << "strlen buffer: " << strlen(buffer) << std::endl; 
+	for (int i = 0; i <= strlen(buffer); i++)     
 	{         
 		std::cout << "Printing from buffer: " << buffer[i] << std::endl;          
-		if (buffer[i] == ',' || i == sizeof(buffer))         
+		if (buffer[i] == ',' || i == strlen(buffer))         
 		{             
 			tokens[j] = token;             
 			j += 1;             
 			token = "";         
 		}         
 		else         
-		{             
+		{        
+			// std::cout << "hello" << std::endl;
+			// std::cout << "index: " << i << "\nElement: " << buffer[i] << std::endl;     
 			token.push_back(buffer[i]);         
 		}
 	}      
@@ -155,8 +160,11 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 	{         
 		std::cout << v << std::endl;     
 	}
-	while (stream >> token)
+	while (stream >> token) {
 		tokens.push_back(token);
+	}
+
+
 	if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 2)) {
 		clients[clientSocket]->name = tokens[1];
 	}
@@ -294,8 +302,8 @@ int main(int argc, char *argv[]) {
 									newBuffer[index] = buffer[i];
 									index++;
 								}
-								std::cout << "NewBuffer: " << newBuffer << std::endl;
-								clientCommand(client->sock, &openSockets, &maxfds, buffer);
+							
+								clientCommand(client->sock, &openSockets, &maxfds, newBuffer);
 
 							}
 							else
