@@ -297,10 +297,10 @@ int main(int argc, char *argv[]) {
 							if(buffer[0] == 0x02 && buffer[strlen(buffer)-1] == 0x03)
 							{
 								char newBuffer[strlen(buffer)];
+								std::cout << strlen(buffer) << std::endl;
 								int index = 0;
-								for(int i = 1; i < strlen(buffer)-1; i++){
-									newBuffer[index] = buffer[i];
-									index++;
+								for(int i = 0; i < strlen(buffer)-1; i++){
+									buffer[i]=buffer[i+1];
 								}
 							
 								clientCommand(client->sock, &openSockets, &maxfds, newBuffer);
