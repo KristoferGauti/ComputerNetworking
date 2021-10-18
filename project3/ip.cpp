@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <iostream>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -53,14 +54,13 @@ int main(int argc, char *argv[])
         }
         else
         {
-            printf("%s: %s\n", ifa->ifa_name, buf);
-            std::string
-            if("wlp1s0".compare(ifa->ifa_name) == 0){
-                printf("Hello World");
+            if ((std::string)ifa->ifa_name == "en0") {
+                std::cout << "My local ip is: " << (std::string)buf << std::endl;
+                return (std::string)buf;
             }
+          
         }
     }
-
     freeifaddrs(myaddrs);
     return 0;
 }

@@ -25,6 +25,11 @@
 #include <thread>
 #include <map>
 #include <unistd.h>
+#include <net/if.h>
+#include <ifaddrs.h>
+
+//Global variables
+#define CHUNK_SIZE 512
 
 // fix SOCK_NONBLOCK for OSX
 #ifndef SOCK_NONBLOCK
@@ -60,13 +65,9 @@ public:
  */
 std::map<int, Client *> clients;
 
-/**
- * Open socket for specified port.
- * @return -1 if unable to create the socket for any reason.
- */
 
-char getlocalip(){
-    struct ifaddrs *myaddrs, *ifa;
+std::string get_local_ip(){
+	struct ifaddrs *myaddrs, *ifa;
     void *in_addr;
     char buf[64];
 
@@ -106,17 +107,24 @@ char getlocalip(){
         if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
         {
             printf("%s: inet_ntop failed!\n", ifa->ifa_name);
+			exit(1);
         }
         else
         {
-            printf("%s: %s\n", ifa->ifa_name, buf);
+            if ((std::string)ifa->ifa_name == "en0") {
+                return (std::string)buf;
+            }
+          
         }
     }
-
     freeifaddrs(myaddrs);
-    return buf;
+	return 0;
 }
 
+/**
+ * Open socket for specified port.
+ * @return -1 if unable to create the socket for any reason.
+ */
 int open_socket(int portno)
 {
 	struct sockaddr_in sk_addr; // address settings for bind()
@@ -220,11 +228,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 			token.push_back(buffer[i]);
 		}
 	}
-	std::cout << "Printing each element in tokens list" << std::endl;
-	for (auto v : tokens)
-	{
-		std::cout << v << std::endl;
-	}
+
 	// std::cout << "Printing each element in tokens list" << std::endl;
 	// for (auto v : tokens)
 	// {
@@ -249,7 +253,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		server_addr.sin_port = htons(atoi(clients[clientSocket]->portnr.c_str()));	//Convert the ASCII port number to integer port number
 
 		//Check for errors for set socket address
-		std::cout << "Ip addr: " << clients[clientSocket]->ipaddr << std::endl;
 		if(inet_pton(AF_INET, clients[clientSocket]->ipaddr.c_str(), &server_addr.sin_addr) <= 0) 
 		{
 			printf("\nInvalid address/ Address not supported \n");
@@ -270,11 +273,12 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 		char temp_buffer[128];
 		char send_buffer[128];
-		char receive_buffer[5000]; //Make dynamic buffer later!!!!!!!!!!!!!!!!!!!!!
+		char receive_buffer[CHUNK_SIZE];
 		int index = 0;
-        char buf[60];
-        buf = getip();
-		strcpy(temp_buffer, "QUERYSERVERS,P3_GROUP_7");
+		std::string local_ip = get_local_ip();
+		std::string message = "QUERYSERVERS,P3_GROUP_7," + local_ip + ",4000"; //dont hardcode the port number fix later
+
+		strcpy(temp_buffer, message.c_str());
 		send_buffer[0] = 0x02;
         for (int i = 1; i < strlen(temp_buffer); i++)
         {
@@ -283,14 +287,19 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         }
         send_buffer[strlen(temp_buffer)] = 0x03;
 
-		std::cout << "Receive buffer size: " << sizeof(receive_buffer) << std::endl;
 		if (send(connection_socket, send_buffer, sizeof(send_buffer), 0) < 0) {
 			perror("No message was sent!");
 		}
-		if (recv(connection_socket, receive_buffer, sizeof(receive_buffer), 0) < 0) {
-			perror("Message was received!");
+		while(true) {
+			memset(receive_buffer ,0 , CHUNK_SIZE);
+			if (recv(connection_socket, receive_buffer, CHUNK_SIZE, 0) < 0) {
+				perror("Message was received!");
+				break;
+			}
+			else {
+				std::cout << receive_buffer << std::endl;
+			}
 		}
-		std::cout << receive_buffer << std::endl;
 
 
 	}
@@ -437,7 +446,6 @@ int main(int argc, char *argv[])
 							if (buffer[0] == 0x02 && buffer[strlen(buffer) - 1] == 0x03)
 							{
 								char newBuffer[strlen(buffer)];
-								std::cout << strlen(buffer) << std::endl;
 								int index = 0;
 								for (int i = 1; i < strlen(buffer) - 1; i++)
 								{
@@ -451,9 +459,6 @@ int main(int argc, char *argv[])
 							{
 								std::cout << "Nothing received" << std::endl;
 							}
-							//std::cout << buffer[0] << " : " << buffer[strlen(buffer) - 4] << std::endl;
-							//clientCommand(client->sock, &openSockets, &maxfds, buffer);
-							//std::cout << "Buffer: " << std::hex << buffer << std::endl;
 						}
 					}
 				}
