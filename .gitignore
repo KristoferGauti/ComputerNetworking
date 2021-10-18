@@ -3,3 +3,8 @@
 *.out
 *.vscode
 *.DS_Store
+*.vs
+*.json
+*.suo
+server
+client

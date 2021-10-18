@@ -42,6 +42,8 @@ class Client {
 public:
 	int sock;		  // socket of client connection
 	std::string name; // Limit length of name of client's user
+	std::string ipaddr;
+	std::string portnr;
 	Client(int socket) : sock(socket) {}
 	~Client() {} // Virtual destructor defined for base class
 };
@@ -150,15 +152,72 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		{             
 			token.push_back(buffer[i]);         
 		}
-	}      
-	for (auto v : tokens)     
-	{         
-		std::cout << v << std::endl;     
 	}
+	// std::cout << "Printing each element in tokens list" << std::endl;
+	// for (auto v : tokens)
+	// {
+	// 	std::cout << v << std::endl;
+	// }
 	while (stream >> token)
 		tokens.push_back(token);
-	if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 2)) {
+	}
+
+	//CONNECT,<Group id>,<IP_address>,<port number>       CONNECT,P3_GROUP_7,130.208.243.61,4001
+	if ((tokens[0].compare("CONNECT") == 0))
+	{
 		clients[clientSocket]->name = tokens[1];
+		clients[clientSocket]->ipaddr = tokens[2];
+		clients[clientSocket]->portnr = tokens[3];
+		
+		//Establish a connection
+		struct sockaddr_in server_addr; 									//Declare Server Address
+		server_addr.sin_family = AF_INET; 									//IPv4 address family
+		server_addr.sin_addr.s_addr = INADDR_ANY;							//Bind Socket to all available interfaces					
+		server_addr.sin_port = htons(atoi(clients[clientSocket]->portnr.c_str()));	//Convert the ASCII port number to integer port number
+
+		//Check for errors for set socket address
+		std::cout << "Ip addr: " << clients[clientSocket]->ipaddr << std::endl;
+		if(inet_pton(AF_INET, clients[clientSocket]->ipaddr.c_str(), &server_addr.sin_addr) <= 0) 
+		{
+			printf("\nInvalid address/ Address not supported \n");
+			exit(0);
+		}
+
+		//Create a tcp socket
+		int connection_socket = open_socket(stoi(clients[clientSocket]->portnr));
+
+		//Check if the connection was successful
+		int connection_successful = connect(connection_socket, (struct sockaddr *)&server_addr, sizeof(server_addr));
+		if (connection_successful < 0)
+		{
+			printf("\nConnection failed \n");
+			exit(0);
+		}
+		printf("Connection successful!\n");
+
+		char temp_buffer[128];
+		char send_buffer[128];
+		char receive_buffer[5000]; //Make dynamic buffer later!!!!!!!!!!!!!!!!!!!!!
+		int index = 0;
+		strcpy(temp_buffer, "QUERYSERVERS,P3_GROUP_7");
+		send_buffer[0] = 0x02;
+        for (int i = 1; i < strlen(temp_buffer); i++)
+        {
+            send_buffer[i] = temp_buffer[index];
+            index++;
+        }
+        send_buffer[strlen(temp_buffer)] = 0x03;
+
+		std::cout << "Receive buffer size: " << sizeof(receive_buffer) << std::endl;
+		if (send(connection_socket, send_buffer, sizeof(send_buffer), 0) < 0) {
+			perror("No message was sent!");
+		}
+		if (recv(connection_socket, receive_buffer, sizeof(receive_buffer), 0) < 0) {
+			perror("Message was received!");
+		}
+		std::cout << receive_buffer << std::endl;
+
+
 	}
 	else if (tokens[0].compare("LEAVE") == 0) {
 		// Close the socket, and leave the socket handling
