@@ -111,8 +111,13 @@ std::string get_local_ip(){
         }
         else
         {
-            if ((std::string)ifa->ifa_name == "wlp1s0") {
-                if (std::string(buf).find(".") != std::string::npos) {
+            if ((std::string)ifa->ifa_name == "en0") {
+				if (std::string(buf).find('.') != std::string::npos) {
+                    return (std::string)buf;
+                }
+            }
+            else if ((std::string)ifa->ifa_name == "wlp1s0") {
+                if (std::string(buf).find('.') != std::string::npos) {
                     return (std::string)buf;
                 }
             }
@@ -240,7 +245,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		tokens.push_back(token);
 	}
 
-	//CONNECT,<Group id>,<IP_address>,<port number>       CONNECT,P3_GROUP_7,130.208.243.61,4001
+	//CONNECT,<Group id>,<IP_address>,<port number>       CONNECT,P3_GROUP_7,130.208.243.61,4002
 	if ((tokens[0].compare("CONNECT") == 0))
 	{
 		clients[clientSocket]->name = tokens[1];
@@ -283,7 +288,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         for (int i = 1; i <= strlen(temp_buffer); i++)
         {
             send_buffer[i] = temp_buffer[index];
-			std::cout << "sendbuffer: " << send_buffer << std::endl;
             index++;
         }
         send_buffer[strlen(temp_buffer)+1] = 0x03;
