@@ -111,8 +111,10 @@ std::string get_local_ip(){
         }
         else
         {
-            if ((std::string)ifa->ifa_name == "en0") {
-                return (std::string)buf;
+            if ((std::string)ifa->ifa_name == "wlp1s0") {
+                if (std::string(buf).find(".") != std::string::npos) {
+                    return (std::string)buf;
+                }
             }
           
         }
@@ -125,7 +127,7 @@ std::string get_local_ip(){
  * Open socket for specified port.
  * @return -1 if unable to create the socket for any reason.
  */
-int open_socket(int portno, bool is_server_socket)
+int open_socket(int portno, bool is_server_socket = false)
 {
 	struct sockaddr_in sk_addr; // address settings for bind()
 	int sock;					// socket opened for this port
@@ -257,7 +259,8 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 			printf("\nInvalid address/ Address not supported \n");
 			exit(0);
 		}
-
+        std::string local_ip = get_local_ip();
+        std::cout << local_ip << std::endl;
 		//Create a tcp socket
 		int connection_socket = open_socket(stoi(clients[clientSocket]->portnr), false);
 
@@ -274,16 +277,17 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		char send_buffer[128];
 		char receive_buffer[CHUNK_SIZE];
 		int index = 0;
-		std::string local_ip = get_local_ip();
 		std::string message = "QUERYSERVERS,P3_GROUP_7," + local_ip + "," + src_port;
 
 		strcpy(temp_buffer, message.c_str());
 		send_buffer[0] = 0x02;
+        std::cout << strlen(temp_buffer) << "vs " << message.size() << std::endl;
         for (int i = 1; i < strlen(temp_buffer); i++)
         {
             send_buffer[i] = temp_buffer[index];
             index++;
         }
+        index = 0;
         send_buffer[strlen(temp_buffer)] = 0x03;
 
 		if (send(connection_socket, send_buffer, sizeof(send_buffer), 0) < 0) {
@@ -424,43 +428,40 @@ int main(int argc, char *argv[])
 			}
 			// Now check for commands from clients
 			std::list<Client *> disconnectedClients;
-			while (n-- > 0)
-			{
-				for (auto const &pair : clients)
-				{
-					Client *client = pair.second;
+            for (auto const &pair : clients)
+            {
+                Client *client = pair.second;
 
-					if (FD_ISSET(client->sock, &readSockets))
-					{
-						// recv() == 0 means client has closed connection
-						if (recv(client->sock, buffer, sizeof(buffer), MSG_DONTWAIT) == 0)
-						{
-							disconnectedClients.push_back(client);
-							closeClient(client->sock, &openSockets, &maxfds);
-						}
-						// We don't check for -1 (nothing received) because select()
-						// only triggers if there is something on the socket for us.
-						else
-						{
-							if (buffer[0] == 0x02 && buffer[strlen(buffer) - 1] == 0x03)
-							{
-								char newBuffer[strlen(buffer)];
-								int index = 0;
-								for (int i = 1; i < strlen(buffer) - 1; i++)
-								{
-									newBuffer[index] = buffer[i];
-									index++;
-								}
+                if (FD_ISSET(client->sock, &readSockets))
+                {
+                    // recv() == 0 means client has closed connection
+                    if (recv(client->sock, buffer, sizeof(buffer), MSG_DONTWAIT) == 0)
+                    {
+                        disconnectedClients.push_back(client);
+                        closeClient(client->sock, &openSockets, &maxfds);
+                    }
+                    // We don't check for -1 (nothing received) because select()
+                    // only triggers if there is something on the socket for us.
+                    else
+                    {
+                        if (buffer[0] == 0x02 && buffer[strlen(buffer) - 1] == 0x03)
+                        {
+                            char newBuffer[strlen(buffer)];
+                            int index = 0;
+                            for (int i = 1; i < strlen(buffer) - 1; i++)
+                            {
+                                newBuffer[index] = buffer[i];
+                                index++;
+                            }
 
-								clientCommand(client->sock, &openSockets, &maxfds, newBuffer, (std::string)argv[1]);
-							}
-							else
-							{
-								std::cout << "Nothing received" << std::endl;
-							}
-						}
-					}
-				}
+                            clientCommand(client->sock, &openSockets, &maxfds, newBuffer, (std::string)argv[1]);
+                        }
+                        else
+                        {
+                            std::cout << "Nothing received" << std::endl;
+                        }
+                    }
+                }
 				// Remove client from the clients list
 				for (auto const &c : disconnectedClients)
 					clients.erase(c->sock);
