@@ -125,7 +125,7 @@ std::string get_local_ip(){
  * Open socket for specified port.
  * @return -1 if unable to create the socket for any reason.
  */
-int open_socket(int portno)
+int open_socket(int portno, bool is_server_socket)
 {
 	struct sockaddr_in sk_addr; // address settings for bind()
 	int sock;					// socket opened for this port
@@ -165,16 +165,15 @@ int open_socket(int portno)
 	sk_addr.sin_addr.s_addr = INADDR_ANY;
 	sk_addr.sin_port = htons(portno);
 
-	// Bind to socket to listen for connections from clients
-	if (bind(sock, (struct sockaddr *)&sk_addr, sizeof(sk_addr)) < 0)
-	{
-		perror("Failed to bind to socket:");
-		return (-1);
+	if (is_server_socket) {
+		// Bind to socket to listen for connections from clients
+		if (bind(sock, (struct sockaddr *)&sk_addr, sizeof(sk_addr)) < 0)
+		{
+			perror("Failed to bind to socket:");
+			return (-1);
+		}
 	}
-	else
-	{
-		return (sock);
-	}
+	return sock;
 }
 
 /**
@@ -260,7 +259,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		}
 
 		//Create a tcp socket
-		int connection_socket = open_socket(stoi(clients[clientSocket]->portnr));
+		int connection_socket = open_socket(stoi(clients[clientSocket]->portnr), false);
 
 		//Check if the connection was successful
 		int connection_successful = connect(connection_socket, (struct sockaddr *)&server_addr, sizeof(server_addr));
@@ -369,7 +368,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Setup socket for server to listen to
-	listenSock = open_socket(atoi(argv[1]));
+	listenSock = open_socket(atoi(argv[1]), true);
 	printf("Listening on port: %d\n", atoi(argv[1]));
 
 	if (listen(listenSock, BACKLOG) < 0)
