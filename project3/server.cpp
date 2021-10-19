@@ -25,6 +25,11 @@
 #include <thread>
 #include <map>
 #include <unistd.h>
+#include <net/if.h>
+#include <ifaddrs.h>
+
+//Global variables
+#define CHUNK_SIZE 512
 
 // fix SOCK_NONBLOCK for OSX
 #ifndef SOCK_NONBLOCK
@@ -43,6 +48,8 @@ class Client
 public:
 	int sock;		  // socket of client connection
 	std::string name; // Limit length of name of client's user
+	std::string ipaddr;
+	std::string portnr;
 	Client(int socket) : sock(socket) {}
 	~Client() {} // Virtual destructor defined for base class
 };
@@ -58,11 +65,67 @@ public:
  */
 std::map<int, Client *> clients;
 
+
+std::string get_local_ip(){
+	struct ifaddrs *myaddrs, *ifa;
+    void *in_addr;
+    char buf[64];
+
+    if(getifaddrs(&myaddrs) != 0)
+    {
+        perror("getifaddrs");
+        exit(1);
+    }
+
+    for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next)
+    {
+        if (ifa->ifa_addr == NULL)
+            continue;
+        if (!(ifa->ifa_flags & IFF_UP))
+            continue;
+
+        switch (ifa->ifa_addr->sa_family)
+        {
+            case AF_INET:
+            {
+                struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
+                in_addr = &s4->sin_addr;
+                break;
+            }
+
+            case AF_INET6:
+            {
+                struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)ifa->ifa_addr;
+                in_addr = &s6->sin6_addr;
+                break;
+            }
+
+            default:
+                continue;
+        }
+
+        if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
+        {
+            printf("%s: inet_ntop failed!\n", ifa->ifa_name);
+			exit(1);
+        }
+        else
+        {
+            if ((std::string)ifa->ifa_name == "en0") {
+                return (std::string)buf;
+            }
+          
+        }
+    }
+    freeifaddrs(myaddrs);
+	return 0;
+}
+
 /**
  * Open socket for specified port.
  * @return -1 if unable to create the socket for any reason.
  */
-int open_socket(int portno)
+int open_socket(int portno, bool is_server_socket)
 {
 	struct sockaddr_in sk_addr; // address settings for bind()
 	int sock;					// socket opened for this port
@@ -102,16 +165,15 @@ int open_socket(int portno)
 	sk_addr.sin_addr.s_addr = INADDR_ANY;
 	sk_addr.sin_port = htons(portno);
 
-	// Bind to socket to listen for connections from clients
-	if (bind(sock, (struct sockaddr *)&sk_addr, sizeof(sk_addr)) < 0)
-	{
-		perror("Failed to bind to socket:");
-		return (-1);
+	if (is_server_socket) {
+		// Bind to socket to listen for connections from clients
+		if (bind(sock, (struct sockaddr *)&sk_addr, sizeof(sk_addr)) < 0)
+		{
+			perror("Failed to bind to socket:");
+			return (-1);
+		}
 	}
-	else
-	{
-		return (sock);
-	}
+	return sock;
 }
 
 /**
@@ -165,19 +227,80 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 			token.push_back(buffer[i]);
 		}
 	}
-	std::cout << "Printing each element in tokens list" << std::endl;
-	for (auto v : tokens)
-	{
-		std::cout << v << std::endl;
-	}
+
+	// std::cout << "Printing each element in tokens list" << std::endl;
+	// for (auto v : tokens)
+	// {
+	// 	std::cout << v << std::endl;
+	// }
 	while (stream >> token)
 	{
 		tokens.push_back(token);
 	}
 
-	if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 2))
+	//CONNECT,<Group id>,<IP_address>,<port number>       CONNECT,P3_GROUP_7,130.208.243.61,4001
+	if ((tokens[0].compare("CONNECT") == 0))
 	{
 		clients[clientSocket]->name = tokens[1];
+		clients[clientSocket]->ipaddr = tokens[2];
+		clients[clientSocket]->portnr = tokens[3];
+		
+		//Establish a connection
+		struct sockaddr_in server_addr; 									//Declare Server Address
+		server_addr.sin_family = AF_INET; 									//IPv4 address family
+		server_addr.sin_addr.s_addr = INADDR_ANY;							//Bind Socket to all available interfaces					
+		server_addr.sin_port = htons(atoi(clients[clientSocket]->portnr.c_str()));	//Convert the ASCII port number to integer port number
+
+		//Check for errors for set socket address
+		if(inet_pton(AF_INET, clients[clientSocket]->ipaddr.c_str(), &server_addr.sin_addr) <= 0) 
+		{
+			printf("\nInvalid address/ Address not supported \n");
+			exit(0);
+		}
+
+		//Create a tcp socket
+		int connection_socket = open_socket(stoi(clients[clientSocket]->portnr), false);
+
+		//Check if the connection was successful
+		int connection_successful = connect(connection_socket, (struct sockaddr *)&server_addr, sizeof(server_addr));
+		if (connection_successful < 0)
+		{
+			printf("\nConnection failed \n");
+			exit(0);
+		}
+		printf("Connection successful!\n");
+
+		char temp_buffer[128];
+		char send_buffer[128];
+		char receive_buffer[CHUNK_SIZE];
+		int index = 0;
+		std::string local_ip = get_local_ip();
+		std::string message = "QUERYSERVERS,P3_GROUP_7," + local_ip + ",4000"; //dont hardcode the port number fix later
+
+		strcpy(temp_buffer, message.c_str());
+		send_buffer[0] = 0x02;
+        for (int i = 1; i < strlen(temp_buffer); i++)
+        {
+            send_buffer[i] = temp_buffer[index];
+            index++;
+        }
+        send_buffer[strlen(temp_buffer)] = 0x03;
+
+		if (send(connection_socket, send_buffer, sizeof(send_buffer), 0) < 0) {
+			perror("No message was sent!");
+		}
+		while(true) {
+			memset(receive_buffer ,0 , CHUNK_SIZE);
+			if (recv(connection_socket, receive_buffer, CHUNK_SIZE, 0) < 0) {
+				perror("Message was received!");
+				break;
+			}
+			else {
+				std::cout << receive_buffer << std::endl;
+			}
+		}
+
+
 	}
 	else if (tokens[0].compare("LEAVE") == 0)
 	{
@@ -245,7 +368,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Setup socket for server to listen to
-	listenSock = open_socket(atoi(argv[1]));
+	listenSock = open_socket(atoi(argv[1]), true);
 	printf("Listening on port: %d\n", atoi(argv[1]));
 
 	if (listen(listenSock, BACKLOG) < 0)
@@ -322,7 +445,6 @@ int main(int argc, char *argv[])
 							if (buffer[0] == 0x02 && buffer[strlen(buffer) - 1] == 0x03)
 							{
 								char newBuffer[strlen(buffer)];
-								std::cout << strlen(buffer) << std::endl;
 								int index = 0;
 								for (int i = 1; i < strlen(buffer) - 1; i++)
 								{
@@ -336,9 +458,6 @@ int main(int argc, char *argv[])
 							{
 								std::cout << "Nothing received" << std::endl;
 							}
-							//std::cout << buffer[0] << " : " << buffer[strlen(buffer) - 4] << std::endl;
-							//clientCommand(client->sock, &openSockets, &maxfds, buffer);
-							//std::cout << "Buffer: " << std::hex << buffer << std::endl;
 						}
 					}
 				}
