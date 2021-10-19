@@ -127,7 +127,7 @@ std::string get_local_ip(){
  * Open socket for specified port.
  * @return -1 if unable to create the socket for any reason.
  */
-int open_socket(int portno, bool is_server_socket = false)
+int open_socket(int portno, bool is_server_socket)
 {
 	struct sockaddr_in sk_addr; // address settings for bind()
 	int sock;					// socket opened for this port
@@ -142,7 +142,7 @@ int open_socket(int portno, bool is_server_socket = false)
 		return (-1);
 	}
 #else
-	if ((sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0)
+	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
 		perror("Failed to open socket");
 		return (-1);
@@ -260,7 +260,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 			exit(0);
 		}
         std::string local_ip = get_local_ip();
-        std::cout << local_ip << std::endl;
 		//Create a tcp socket
 		int connection_socket = open_socket(stoi(clients[clientSocket]->portnr), false);
 
@@ -268,7 +267,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		int connection_successful = connect(connection_socket, (struct sockaddr *)&server_addr, sizeof(server_addr));
 		if (connection_successful < 0)
 		{
-			printf("\nConnection failed \n");
+			perror("\nConnection failed");
 			exit(0);
 		}
 		printf("Connection successful!\n");
