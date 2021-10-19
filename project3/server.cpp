@@ -281,14 +281,13 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 		strcpy(temp_buffer, message.c_str());
 		send_buffer[0] = 0x02;
-        std::cout << strlen(temp_buffer) << "vs " << message.size() << std::endl;
-        for (int i = 1; i < strlen(temp_buffer); i++)
+        for (int i = 1; i <= strlen(temp_buffer); i++)
         {
             send_buffer[i] = temp_buffer[index];
+			std::cout << "sendbuffer: " << send_buffer << std::endl;
             index++;
         }
-        index = 0;
-        send_buffer[strlen(temp_buffer)] = 0x03;
+        send_buffer[strlen(temp_buffer)+1] = 0x03;
 
 		if (send(connection_socket, send_buffer, sizeof(send_buffer), 0) < 0) {
 			perror("No message was sent!");
