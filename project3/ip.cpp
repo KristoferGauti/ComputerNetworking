@@ -54,11 +54,15 @@ int main(int argc, char *argv[])
         }
         else
         {
-            if ((std::string)ifa->ifa_name == "en0") {
-                std::cout << "My local ip is: " << (std::string)buf << std::endl;
-                return (std::string)buf;
+            printf("%s: %s\n", ifa->ifa_name, buf);
+            if ((std::string)ifa->ifa_name == "wlp1s0") {
+                if (std::string(buf).find(".") != std::string::npos) {
+                    std::cout << "found!" << '\n';
+                    printf("My ip address is: %s\n", buf);
+
+                }
+
             }
-          
         }
     }
     freeifaddrs(myaddrs);
