@@ -203,7 +203,7 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
 }
 
 // Process command from client on the server
-void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer)
+void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
 {
 	// we might have to change the size of the tokens vector
 	std::vector<std::string> tokens(4);
@@ -275,7 +275,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		char receive_buffer[CHUNK_SIZE];
 		int index = 0;
 		std::string local_ip = get_local_ip();
-		std::string message = "QUERYSERVERS,P3_GROUP_7," + local_ip + ",4000"; //dont hardcode the port number fix later
+		std::string message = "QUERYSERVERS,P3_GROUP_7," + local_ip + "," + src_port;
 
 		strcpy(temp_buffer, message.c_str());
 		send_buffer[0] = 0x02;
@@ -452,7 +452,7 @@ int main(int argc, char *argv[])
 									index++;
 								}
 
-								clientCommand(client->sock, &openSockets, &maxfds, newBuffer);
+								clientCommand(client->sock, &openSockets, &maxfds, newBuffer, (std::string)argv[1]);
 							}
 							else
 							{
