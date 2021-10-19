@@ -1,8 +1,8 @@
 /**
- * Simple chat client for TSAM-409
- * Command line: ./chat_client 4000 
+ * Simple chat client for TSAM-409 project 3
+ * Command line: ./client <inet_ip> <port_number> 
  * Modified code from a template provided by Jacky Mallett (jacky@ru.is)
- * Authors: Bergur Tareq Tamimi & Kristofer Gauti Þórhallsson
+ * Authors: Anton Björn Mayböck Helgason, Bergur Tareq Tamimi & Kristofer Gauti Þórhallsson
  */
 #include <stdio.h>
 #include <errno.h>

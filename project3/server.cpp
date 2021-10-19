@@ -1,6 +1,6 @@
 /**
- * Simple chat server for TSAM-409
- * Command line: ./chat_server 4000 
+ * Simple chat server for TSAM-409 project 3
+ * Command line: ./server <inet_ip> <port_number> 
  * Modified code from a template provided by Jacky Mallett (jacky@ru.is)
  * Authors: Anton Björn Mayböck Helgason, Bergur Tareq Tamimi & Kristofer Gauti Þórhallsson
  */
@@ -246,9 +246,9 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		clients[clientSocket]->portnr = tokens[3];
 		
 		//Establish a connection
-		struct sockaddr_in server_addr; 									//Declare Server Address
-		server_addr.sin_family = AF_INET; 									//IPv4 address family
-		server_addr.sin_addr.s_addr = INADDR_ANY;							//Bind Socket to all available interfaces					
+		struct sockaddr_in server_addr; 											//Declare Server Address
+		server_addr.sin_family = AF_INET; 											//IPv4 address family
+		server_addr.sin_addr.s_addr = INADDR_ANY;									//Bind Socket to all available interfaces					
 		server_addr.sin_port = htons(atoi(clients[clientSocket]->portnr.c_str()));	//Convert the ASCII port number to integer port number
 
 		//Check for errors for set socket address
