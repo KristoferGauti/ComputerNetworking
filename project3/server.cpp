@@ -225,7 +225,6 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 	// Split command from client into tokens for parsing
 	std::stringstream stream(buffer);
-	int j = 0;
 
 	for (int i = 0; i <= strlen(buffer); i++)
 	{
@@ -233,7 +232,6 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		if (buffer[i] == ',' || i == strlen(buffer))
 		{
 			tokens.push_back(token);
-			j += 1;
 			token = "";
 		}
 		else
@@ -252,7 +250,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		tokens.push_back(token);
 	}
 
-	//CONNECT,<Group id>,<IP_address>,<port number>       CONNECT,P3_GROUP_7,130.208.243.61,4002
+	//CONNECT,<Group id>,<IP_address>,<port number>       QUERYSERVERS,P3_GROUP_7,130.208.243.61,4002
     if ((tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 2)){
         std::cout << "Our servers: ";
         std::string response = "SERVERS,";
@@ -322,6 +320,58 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                 }
                 else{
                     std::cout << "The message we got back: " << receive_buffer << std::endl;
+					std::string string_message = (std::string)receive_buffer;
+
+					std::stringstream ss(string_message);
+					std::vector<std::string> servers_info;
+
+					int index = 0;
+					while(ss.good())
+					{
+						std::string substr;
+						std::getline(ss, substr, ';');
+						if (index == 0) {					//Erasing SERVERS from the first string to get the string: groupId,IP,port
+							substr = substr.erase(0, 9);
+						}
+					
+						std::cout << "length: " << substr.size() << std::endl;
+						if (substr.size() != 1) { //does not append the last line whereas it is an empty string. Don't ask, it works!!!!
+							servers_info.push_back(substr);
+						}
+						index++;
+					}
+
+					
+					std::vector<std::string> group_IP_portnr_list; 
+					for (auto server_info : servers_info) {
+						std::cout << "Server: " << server_info << std::endl;
+						std::stringstream ss(server_info);
+						std::string str;
+						while (getline(ss, str, ',')) {
+							group_IP_portnr_list.push_back(str);
+						}
+
+					}
+
+					for (int i = 0; i < group_IP_portnr_list.size(); i+=3) {
+						std::string group_id = group_IP_portnr_list[i];
+						std::string ip_address = group_IP_portnr_list[i+1];
+						std::string port_number = group_IP_portnr_list[i+2];
+						
+						// Create socket -> server socket or client socket
+						// Insert the ip addr, groupname, port number and socket into the instance clientguy from Client class
+						// clients.insert(std::pair<int, Client>)
+						// Insert into the map like this -> clients.insert(std::pair<int, Client>(sockfd, clientguy));
+						// Mission accomplished hopefully
+
+
+
+						std::cout << "groupId: " << group_id << std::endl;
+						std::cout << "ip_addr: " << ip_address << std::endl;
+						std::cout << "port_number: " << port_number << std::endl;
+						std::cout << "\n";
+					}
+
                     //std::string receivestring = std::to_string(receive_buffer);
                     //connected(receivestring);
                     break;
