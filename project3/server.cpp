@@ -210,11 +210,11 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
 	FD_CLR(clientSocket, openSockets);
 }
 
-void connected(std::string receiveString){
-    std::string Servers;
-    int index = receiveString.find(',');
-    Servers = receiveString.substr(index+1, receiveString.size());
-}
+//void connected(std::string receiveString){
+//    std::string Servers;
+//    int index = receiveString.find(',');
+//    Servers = receiveString.substr(index+1, receiveString.size());
+//}
 
 // Process command from client on the server
 void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
@@ -254,10 +254,10 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 	//CONNECT,<Group id>,<IP_address>,<port number>       CONNECT,P3_GROUP_7,130.208.243.61,4002
     if ((tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 2)){
-        std::cout << "Our servers: " << std::endl;
+        std::cout << "Our servers: ";
         std::string response = "SERVERS,";
     }
-	else if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 5))
+	else if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 5)
 	{
 		clients[clientSocket]->name = tokens[1];
 		clients[clientSocket]->ipaddr = tokens[2];
@@ -322,8 +322,8 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                 }
                 else{
                     std::cout << "The message we got back: " << receive_buffer << std::endl;
-                    std::string receivestring = std::to_string(receive_buffer);
-                    connected(receivestring);
+                    //std::string receivestring = std::to_string(receive_buffer);
+                    //connected(receivestring);
                     break;
                 }
 			}
@@ -344,11 +344,13 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		// some KEEPALIVE stuff
 		std::cout << "I am a message from KEEPALIVE" << std::endl;
 	}
+    //server command
 	else if (tokens[0].compare("FETCH_MSGS") == 0 && tokens.size() == 3)
 	{
 		// some FETCH MSGS stuff
 		std::cout << "I am a message from FETCH_MSGS" << std::endl;
 	}
+    //server command
 	else if (tokens[0].compare("SEND_MSG") == 0 && tokens.size() == 5)
 	{
 		// some SEND MSG stuff
@@ -364,9 +366,11 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		// some STATUSRESP stuff
 		std::cout << "I am a message from STATUSRESP" << std::endl;
 	}
+    //client command
     else if((tokens[0].compare("SEND_MSG") == 0) && tokens.size() == 4){
 
     }
+    //client command
     else if((tokens[0].compare("FETCH_MSG") == 0) && tokens.size() == 4){
 
     }
