@@ -64,6 +64,7 @@ public:
  * Lookup table for per Client information
  */
 std::map<int, Client *> clients;
+std::map<std::string, Client *> connections;
 
 
 std::string get_local_ip(){
@@ -302,7 +303,16 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 				break;
 			}
 			else {
-				std::cout << receive_buffer << std::endl;
+                std::string receive(receive_buffer);
+                std::size_t found = receive.find("QUERYSERVERS");
+                if(found != std::string::npos){
+                    std::cout << "The message we got back: " << receive_buffer << std::endl;
+                    std::cout << "Sending to Queryserver"<< std::endl;
+                }
+                else{
+                    std::cout << "The message we got back: " << receive_buffer << std::endl;
+                    break;
+                }
 			}
 		}
 
@@ -430,43 +440,37 @@ int main(int argc, char *argv[])
 			}
 			// Now check for commands from clients
 			std::list<Client *> disconnectedClients;
-            for (auto const &pair : clients)
-            {
-                Client *client = pair.second;
+            while (n-- > 0){
+                for (auto const &pair : clients) {
+                    Client *client = pair.second;
 
-                if (FD_ISSET(client->sock, &readSockets))
-                {
-                    // recv() == 0 means client has closed connection
-                    if (recv(client->sock, buffer, sizeof(buffer), MSG_DONTWAIT) == 0)
-                    {
-                        disconnectedClients.push_back(client);
-                        closeClient(client->sock, &openSockets, &maxfds);
-                    }
-                    // We don't check for -1 (nothing received) because select()
-                    // only triggers if there is something on the socket for us.
-                    else
-                    {
-                        if (buffer[0] == 0x02 && buffer[strlen(buffer) - 1] == 0x03)
-                        {
-                            char newBuffer[strlen(buffer)];
-                            int index = 0;
-                            for (int i = 1; i < strlen(buffer) - 1; i++)
-                            {
-                                newBuffer[index] = buffer[i];
-                                index++;
+                    if (FD_ISSET(client->sock, &readSockets)) {
+                        // recv() == 0 means client has closed connection
+                        if (recv(client->sock, buffer, sizeof(buffer), MSG_DONTWAIT) == 0) {
+                            disconnectedClients.push_back(client);
+                            closeClient(client->sock, &openSockets, &maxfds);
+                        }
+                            // We don't check for -1 (nothing received) because select()
+                            // only triggers if there is something on the socket for us.
+                        else {
+                            if (buffer[0] == 0x02 && buffer[strlen(buffer) - 1] == 0x03) {
+                                char newBuffer[strlen(buffer)];
+                                int index = 0;
+                                for (int i = 1; i < strlen(buffer) - 1; i++) {
+                                    newBuffer[index] = buffer[i];
+                                    index++;
+                                }
+
+                                clientCommand(client->sock, &openSockets, &maxfds, newBuffer, (std::string) argv[1]);
+                            } else {
+                                std::cout << "Nothing received" << std::endl;
                             }
-
-                            clientCommand(client->sock, &openSockets, &maxfds, newBuffer, (std::string)argv[1]);
-                        }
-                        else
-                        {
-                            std::cout << "Nothing received" << std::endl;
                         }
                     }
+                    // Remove client from the clients list
+                    for (auto const &c: disconnectedClients)
+                        clients.erase(c->sock);
                 }
-				// Remove client from the clients list
-				for (auto const &c : disconnectedClients)
-					clients.erase(c->sock);
 			}
 		}
 	}
