@@ -31,14 +31,13 @@
 //Global variables
 #define CHUNK_SIZE 512
 #define MAX_SERVER 15
+#define BACKLOG 5 // Allowed length of queue of waiting connections
 
 // fix SOCK_NONBLOCK for OSX
 #ifndef SOCK_NONBLOCK
 #include <fcntl.h>
 #define SOCK_NONBLOCK O_NONBLOCK
 #endif
-
-#define BACKLOG 5 // Allowed length of queue of waiting connections
 
 /**
  * Simple class for handling connections from clients.
@@ -73,6 +72,8 @@ public:
 std::map<int, Client *> clients;
 std::map<std::string, Client *> connections;
 std::map<std::string, std::vector<std::string>> messages;
+std::string GROUP_ID = "P3_GROUP_7";
+
 
 bool valid_message(char *buffer)
 {
@@ -271,8 +272,6 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
 	FD_CLR(clientSocket, openSockets);
 }
 
-void sendMessage(char* buffer, std::string message)
-
 // Process command from client on the server
 void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
 {
@@ -282,8 +281,14 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 	// Split command from client into tokens for parsing
 	std::stringstream stream(buffer);
+    std::string Hello = "Hello";
+    std::string World = "World";
+    std::string Anton = "Anton";
+    std::vector<std::string> ble = {Hello, World, Anton};
+    messages.insert({"anton", ble});
 
-	for (int i = 0; i <= strlen(buffer); i++)
+
+    for (int i = 0; i <= strlen(buffer); i++)
 	{
 
 		if (buffer[i] == ',' || i == strlen(buffer))
@@ -439,6 +444,20 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
         if(count > 0){
             std::string message;
+            std::string namefrom = clients[clientSocket]->name;
+            std::string ipAddrfrom = clients[clientSocket]->ipaddr;
+            std::string portnrfrom = clients[clientSocket]->portnr;
+            char send_buffer[message.size() + 2];
+
+            construct_message(send_buffer, message);
+            int connection_socket = establish_connection(portnrfrom, ipAddrfrom);
+
+            if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
+                perror("Unable to send");
+            }
+            else{
+                printf("Message: %s sent successfully", message);
+            }
         }
 	}
 	//server command
@@ -477,7 +496,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         }
 	}
 	//server command
-	else if (tokens[0].compare("SEND_MSG") == 0 && tokens.size() == 4)
+	else if (tokens[0].compare("SEND_MSG") == 0) // if neeeded then tokens.size == 4 but Anton deos not see a reason for having two SEMD_MSG commands
 	{
 
 		// some SEND MSG stuff
@@ -502,7 +521,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                 perror("Unable to send");
             }
             else{
-                printf("Message: %s sent succesfully", message);
+                printf("Message: %s sent succesfully", message.c_str());
             }
 
         } else {
@@ -526,15 +545,37 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		std::cout << "I am a message from STATUSRESP" << std::endl;
 	}
 	//client command
-	else if ((tokens[0].compare("SEND_MSG") == 0) && tokens.size() == 3)
-	{
-	}
+//	else if ((tokens[0].compare("SEND_MSG") == 0) && tokens.size() == 3)
+//	{
+//	}
 	//client command
 	else if ((tokens[0].compare("FETCH_MSG") == 0) && tokens.size() == 2)
 	{
+        std::string group = tokens[1];
+        std::string messageBack = "FETCH_MSG,";
+        for(auto const &hello : messages) {
+            //std::cout << hello.first << std::endl;
+            if (messages.count(group) > 0) {
+                for (auto const &ble: hello.second) {
+                    //std::cout << ble << std::endl;
+                    messageBack += ble + ',';
+
+                }
+            }
+        }
+        char send_buffer[messageBack.size() + 2];
+
+        construct_message(send_buffer, messageBack);
+        //int connection_socket = establish_connection(clients[clientSocket]->portnr, clients[clientSocket]->ipaddr);
+
+        if(send(clientSocket, send_buffer, messageBack.size()+2, 0) < 0){
+            perror("Unable to send");
+        }
+        else{
+            printf("Message: %s sent succesfully", messageBack.c_str());
+        }
 	}
 	else
-
 	{
 		std::cout << "Unknown command from client:" << buffer << std::endl;
 	}
