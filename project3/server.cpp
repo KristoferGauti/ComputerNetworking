@@ -151,7 +151,7 @@ std::string get_local_ip()
  * Open socket for specified port.
  * @return -1 if unable to create the socket for any reason.
  */
-int open_socket(int portno, bool is_server_socket)
+int open_socket(int portno, std::string ipaddr = NULL, bool is_server_socket = false)
 {
 	struct sockaddr_in sk_addr; // address settings for bind()
 	int sock;					// socket opened for this port
@@ -188,7 +188,7 @@ int open_socket(int portno, bool is_server_socket)
 	memset(&sk_addr, 0, sizeof(sk_addr));
 
 	sk_addr.sin_family = AF_INET;
-	sk_addr.sin_addr.s_addr = INADDR_ANY;
+    sk_addr.sin_addr.s_addr = INADDR_ANY;
 	sk_addr.sin_port = htons(portno);
 
 	if (is_server_socket)
@@ -300,6 +300,13 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		std::cout << "Our servers: ";
 		std::string response = "SERVERS,";
 	}
+
+	//CONNECT,<Group id>,<IP_address>,<port number>       QUERYSERVERS,P3_GROUP_7,130.208.243.61,4002
+    if ((tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 2)){
+        std::cout << "Our servers: ";
+        std::string response = "SERVERS,";
+
+    }
 	else if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 4)
 	{
 		clients[clientSocket]->name = tokens[1];
@@ -435,17 +442,17 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 		// some SEND MSG stuff
 		std::cout << "I am a message from SEND_MSG" << std::endl;
-		if (connections.find(tokens[1]) != connections.end())
-		{
-			// found
-			// send the msg content tokens[3]
-			//
-		}
-		else
-		{
-			// not found
-			// cache the message and wait until someone fetches the message
-		}
+        if ( connections.find(tokens[1]) != connections.end() ) {
+            // found
+            // send the msg content tokens[3]
+            //
+        } else {
+            // not found
+            // cache the message and wait until someone fetches the message
+            std::vector<std::string> message;
+            //messages[tokens[1]] = message.push_back(tokens[4]);
+        }
+
 	}
 	else if (tokens[0].compare("STATUSREQ") == 0)
 	{
@@ -490,6 +497,7 @@ int main(int argc, char *argv[])
 		printf("Usage: chat_server <ip port>\n");
 		exit(0);
 	}
+
 
 	// Setup socket for server to listen to
 	listenSock = open_socket(atoi(argv[1]), true);
