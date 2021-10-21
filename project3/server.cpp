@@ -151,7 +151,7 @@ std::string get_local_ip()
  * Open socket for specified port.
  * @return -1 if unable to create the socket for any reason.
  */
-int open_socket(int portno, std::string ipaddr = NULL, bool is_server_socket = false)
+int open_socket(int portno, bool is_server_socket = false)
 {
 	struct sockaddr_in sk_addr; // address settings for bind()
 	int sock;					// socket opened for this port
@@ -232,7 +232,7 @@ int establish_connection(std::string port_nr, std::string ip_addr)
 
 void construct_message(char *send_buffer, std::string message)
 {
-	char temp_buffer[128];
+	char temp_buffer[message.size()+2];
 	strcpy(temp_buffer, message.c_str());
 	send_buffer[0] = 0x02;
 	int index = 0;
@@ -294,17 +294,12 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		}
 	}
 
-	// response to other servers
-	if ((tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 2))
-	{
-		std::cout << "Our servers: ";
-		std::string response = "SERVERS,";
-	}
 
 	//CONNECT,<Group id>,<IP_address>,<port number>       QUERYSERVERS,P3_GROUP_7,130.208.243.61,4002
     if ((tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 2)){
         std::cout << "Our servers: ";
         std::string response = "SERVERS,";
+
 
     }
 	else if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 4)
@@ -319,6 +314,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		char send_buffer[128];
 
 		construct_message(send_buffer, message);
+		
 
 		if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
 		{
@@ -337,6 +333,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 			}
 			else
 			{
+				char new_receivebuffer[128];
 				std::string receive(receive_buffer);
 				std::size_t found = receive.find("QUERYSERVERS");
 				if (found != std::string::npos)
@@ -344,6 +341,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 					// std::cout << "The message we got back: " << receive_buffer << std::endl;
 					// std::cout << "Sending to Queryserver"<< std::endl;
 					//Work in sending server message
+					strcpy(new_receivebuffer, receive_buffer);
 				}
 				else
 				{
@@ -406,9 +404,10 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 						}
 						server_msg += group_IP_portnr_list[i] + "," + group_IP_portnr_list[i + 1] + "," + group_IP_portnr_list[i + 2] + ';';
 					}
-					std::cout << "\n"
-							  << server_msg << std::endl;
-					if (send(connection_socket, server_msg.c_str(), server_msg.size(), 0) < 0)
+					char send_buffer[server_msg.size()+2];
+					construct_message(send_buffer, server_msg);
+					std::cout << "send_buffer to instructor server: " << send_buffer << std::endl;
+					if (send(connection_socket, send_buffer, server_msg.size()+2, 0) < 0)
 					{
 						perror("No message was sent!");
 					}
