@@ -315,7 +315,6 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                 std::size_t found = receive.find("QUERYSERVERS");
                 if(found != std::string::npos){
                     std::cout << "The message we got back: " << receive_buffer << std::endl;
-                    std::cout << "Sending to Queryserver"<< std::endl;
                     //Work in sending server message
                 }
                 else{
@@ -403,8 +402,18 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     //server command
 	else if (tokens[0].compare("SEND_MSG") == 0 && tokens.size() == 5)
 	{
+
 		// some SEND MSG stuff
 		std::cout << "I am a message from SEND_MSG" << std::endl;
+        if ( connections.find(tokens[1]) != connections.end() ) {
+            // found
+            // send the msg content tokens[3]
+            //
+        } else {
+            // not found
+            // cache the message and wait until someone fetches the message
+        }
+
 	}
 	else if (tokens[0].compare("STATUSREQ") == 0)
 	{
