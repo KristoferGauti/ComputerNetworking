@@ -72,60 +72,62 @@ std::map<int, Client *> clients;
 std::map<std::string, Client *> connections;
 std::map<std::string, std::vector<std::string>> messages;
 
-
-std::string get_local_ip(){
+std::string get_local_ip()
+{
 	struct ifaddrs *myaddrs, *ifa;
-    void *in_addr;
-    char buf[64];
+	void *in_addr;
+	char buf[64];
 
-    if(getifaddrs(&myaddrs) != 0)
-    {
-        perror("getifaddrs");
-        exit(1);
-    }
+	if (getifaddrs(&myaddrs) != 0)
+	{
+		perror("getifaddrs");
+		exit(1);
+	}
 
-    for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next)
-    {
-        if (ifa->ifa_addr == NULL)
-            continue;
-        if (!(ifa->ifa_flags & IFF_UP))
-            continue;
+	for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next)
+	{
+		if (ifa->ifa_addr == NULL)
+			continue;
+		if (!(ifa->ifa_flags & IFF_UP))
+			continue;
 
-        switch (ifa->ifa_addr->sa_family)
-        {
-            case AF_INET:
-            {
-                struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
-                in_addr = &s4->sin_addr;
-                break;
-            }
+		switch (ifa->ifa_addr->sa_family)
+		{
+		case AF_INET:
+		{
+			struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
+			in_addr = &s4->sin_addr;
+			break;
+		}
 
-            case AF_INET6:
-            {
-                struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)ifa->ifa_addr;
-                in_addr = &s6->sin6_addr;
-                break;
-            }
+		case AF_INET6:
+		{
+			struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)ifa->ifa_addr;
+			in_addr = &s6->sin6_addr;
+			break;
+		}
 
-            default:
-                continue;
-        }
+		default:
+			continue;
+		}
 
-        if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
-        {
-            printf("%s: inet_ntop failed!\n", ifa->ifa_name);
+		if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
+		{
+			printf("%s: inet_ntop failed!\n", ifa->ifa_name);
 			exit(1);
-        }
-        else
-        {
-            if ((std::string)ifa->ifa_name == "en0" || (std::string)ifa->ifa_name == "wlp1s0") {
-				if (std::string(buf).find('.') != std::string::npos) {
-                    return (std::string)buf;
-                }
-            }
-        }
-    }
-    freeifaddrs(myaddrs);
+		}
+		else
+		{
+			if ((std::string)ifa->ifa_name == "en0" || (std::string)ifa->ifa_name == "wlp1s0")
+			{
+				if (std::string(buf).find('.') != std::string::npos)
+				{
+					return (std::string)buf;
+				}
+			}
+		}
+	}
+	freeifaddrs(myaddrs);
 	return 0;
 }
 
@@ -173,7 +175,8 @@ int open_socket(int portno, bool is_server_socket)
 	sk_addr.sin_addr.s_addr = INADDR_ANY;
 	sk_addr.sin_port = htons(portno);
 
-	if (is_server_socket) {
+	if (is_server_socket)
+	{
 		// Bind to socket to listen for connections from clients
 		if (bind(sock, (struct sockaddr *)&sk_addr, sizeof(sk_addr)) < 0)
 		{
@@ -262,18 +265,20 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		clients[clientSocket]->portnr = tokens[3];
 
 		//Establish a connection
-		struct sockaddr_in server_addr; 											//Declare Server Address
-		server_addr.sin_family = AF_INET; 											//IPv4 address family
-		server_addr.sin_addr.s_addr = INADDR_ANY;									//Bind Socket to all available interfaces					
-		server_addr.sin_port = htons(atoi(clients[clientSocket]->portnr.c_str()));	//Convert the ASCII port number to integer port number
+		struct sockaddr_in server_addr;											   //Declare Server Address
+		server_addr.sin_family = AF_INET;										   //IPv4 address family
+		server_addr.sin_addr.s_addr = INADDR_ANY;								   //Bind Socket to all available interfaces
+		server_addr.sin_port = htons(atoi(clients[clientSocket]->portnr.c_str())); //Convert the ASCII port number to integer port number
 
 		//Check for errors for set socket address
-		if(inet_pton(AF_INET, clients[clientSocket]->ipaddr.c_str(), &server_addr.sin_addr) <= 0) 
+		if (inet_pton(AF_INET, clients[clientSocket]->ipaddr.c_str(), &server_addr.sin_addr) <= 0)
 		{
 			printf("\nInvalid address/ Address not supported \n");
 			exit(0);
 		}
-        std::string local_ip = get_local_ip();
+
+		std::string local_ip = get_local_ip();
+
 		//Create a tcp socket
 		int connection_socket = open_socket(stoi(clients[clientSocket]->portnr), false);
 
@@ -294,6 +299,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 		strcpy(temp_buffer, message.c_str());
 		send_buffer[0] = 0x02;
+
         for (int i = 1; i <= strlen(temp_buffer); i++)
         {
             send_buffer[i] = temp_buffer[index];
@@ -381,10 +387,11 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 					}
                 	break;
                 }
+
+
+
 			}
 		}
-
-
 	}
 	else if (tokens[0].compare("LEAVE") == 0)
 	{
@@ -434,14 +441,32 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     //client command
     else if((tokens[0].compare("SEND_MSG") == 0) && tokens.size() == 4){
 
+
     }
     //client command
     else if((tokens[0].compare("FETCH_MSG") == 0) && tokens.size() == 4){
 
     }
     else
+
 	{
 		std::cout << "Unknown command from client:" << buffer << std::endl;
+	}
+}
+
+
+// HELPER FUNCTIONS
+bool valid_message(char *buffer)
+{
+	return buffer[0] == 0x02 && buffer[strlen(buffer) - 1] == 0x03;
+}
+void parse_message(char *buffer, char *newBuffer)
+{
+	int index = 0;
+	for (int i = 1; i < strlen(buffer) - 1; i++)
+	{
+		newBuffer[index] = buffer[i];
+		index++;
 	}
 }
 
@@ -560,6 +585,7 @@ int main(int argc, char *argv[])
 			// Now check for commands from clients
 			std::list<Client *> disconnectedClients;
 
+
 			while (n-- > 0)
 			{
 				for (auto const &pair : clients)
@@ -578,28 +604,12 @@ int main(int argc, char *argv[])
 						// only triggers if there is something on the socket for us.
 						else
 						{
-							if (buffer[0] == 0x02 && buffer[strlen(buffer) - 1] == 0x03)
-							{
-								char newBuffer[strlen(buffer)];
-								int index = 0;
-								for (int i = 1; i < strlen(buffer); i++)
-								{
-									newBuffer[index] = buffer[i];
-									index++;
-								}
-                                newBuffer[index-1]={};
-								std::cout << "Entering client commands" << std::endl;
-								//clientCommand(client->sock, &openSockets, &maxfds, newBuffer, (std::string)argv[1]);
-                                if(client->isServer){
-                                    serverCommand(client->sock, &openSockets, &maxfds, newBuffer, (std::string)argv[1]);
-                                }else{
-                                    int port = atoi(argv[1]) - 1;
-                                    std::string stringPort = std::to_string(port);
-                                    serverCommand(client->sock, &openSockets, &maxfds, newBuffer, (std::string)argv[1]);
-
-                                }
-                                // Need to implement separate function that takes in clientCommands
-							}
+							if (valid_message(buffer))
+						{
+							char newBuffer[strlen(buffer)];
+							parse_message(buffer, newBuffer);
+							clientCommand(client->sock, &openSockets, &maxfds, newBuffer, (std::string)argv[1]);
+						}
 							else
 							{
 								std::cout << "Nothing received" << std::endl;
@@ -610,6 +620,7 @@ int main(int argc, char *argv[])
 					for (auto const &c : disconnectedClients)
 						clients.erase(c->sock);
 				}
+		
 			}
 		}
 	}
