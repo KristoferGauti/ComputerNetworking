@@ -301,9 +301,10 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         }
         send_buffer[strlen(temp_buffer)+1] = 0x03;
 
-		if (send(connection_socket, send_buffer, sizeof(send_buffer), 0) < 0) {
+		if (send(connection_socket, send_buffer, message.size()+2, 0) < 0) {
 			perror("No message was sent!");
 		}
+		std::string server_msg = "SERVERS,";
 		while(true) {
 			memset(receive_buffer ,0 , CHUNK_SIZE);
 			if (recv(connection_socket, receive_buffer, CHUNK_SIZE, 0) < 0) {
@@ -314,8 +315,8 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                 std::string receive(receive_buffer);
                 std::size_t found = receive.find("QUERYSERVERS");
                 if(found != std::string::npos){
-                    std::cout << "The message we got back: " << receive_buffer << std::endl;
-                    std::cout << "Sending to Queryserver"<< std::endl;
+                    // std::cout << "The message we got back: " << receive_buffer << std::endl;
+                    // std::cout << "Sending to Queryserver"<< std::endl;
                     //Work in sending server message
                 }
                 else{
@@ -365,27 +366,20 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 								clients[sockfd]->ipaddr = ip_address;
 								clients[sockfd]->name = group_id;
 								clients[sockfd]->portnr = port_number;
+
+								connections[group_id] = new Client(sockfd, true);
+								connections[group_id]->ipaddr = ip_address;
+								connections[group_id]->name = group_id;
+								connections[group_id]->portnr = port_number;
 							}
-							std::cout << "\n";
-							std::cout << clients[sockfd]->sock << std::endl;
-							std::cout << clients[sockfd]->name << std::endl;
-							std::cout << clients[sockfd]->ipaddr << std::endl;
-							std::cout << clients[sockfd]->portnr << std::endl;
 						}
-
-
-
-
-						// std::cout << "groupId: " << group_id << std::endl;
-						// std::cout << "ip_addr: " << ip_address << std::endl;
-						// std::cout << "port_number: " << port_number << std::endl;
-						// std::cout << "\n";
+						server_msg += group_IP_portnr_list[i] + "," + group_IP_portnr_list[i+1] + "," + group_IP_portnr_list[i+2] + ';';
 					}
-					
-					
-                    //std::string receivestring = std::to_string(receive_buffer);
-                    //connected(receivestring);
-                    break;
+					std::cout << "\n" << server_msg << std::endl;
+					if (send(connection_socket, server_msg.c_str(), server_msg.size(), 0) < 0) {
+						perror("No message was sent!");
+					}
+                	break;
                 }
 			}
 		}
@@ -591,7 +585,7 @@ int main(int argc, char *argv[])
                                 }else{
                                     int port = atoi(argv[1]) - 1;
                                     std::string stringPort = std::to_string(port);
-                                    serverCommand(client->sock, &openSockets, &maxfds, newBuffer, stringPort);
+                                    serverCommand(client->sock, &openSockets, &maxfds, newBuffer, (std::string)argv[1]);
 
                                 }
                                 // Need to implement separate function that takes in clientCommands
