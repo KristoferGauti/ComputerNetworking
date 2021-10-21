@@ -230,6 +230,20 @@ int establish_connection(std::string port_nr, std::string ip_addr)
 	return connection_socket;
 }
 
+void construct_message(char *send_buffer, std::string message)
+{
+	char temp_buffer[128];
+	strcpy(temp_buffer, message.c_str());
+	send_buffer[0] = 0x02;
+	int index = 0;
+	for (int i = 1; i <= strlen(temp_buffer); i++)
+	{
+		send_buffer[i] = temp_buffer[index];
+		index++;
+	}
+	send_buffer[strlen(temp_buffer) + 1] = 0x03;
+}
+
 /**
  * Close a client's connection, remove it from the client list, and
  * tidy up select sockets afterwards.
@@ -280,13 +294,6 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		}
 	}
 
-	std::cout << "Printing each element in tokens list" << std::endl;
-	for (auto v : tokens)
-	{
-		std::cout << v << std::endl;
-	}
-	std::cout << "Size " << tokens.size() << std::endl;
-
 	// response to other servers
 	if ((tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 2))
 	{
@@ -301,27 +308,18 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 		int connection_socket = establish_connection(clients[clientSocket]->portnr, clients[clientSocket]->ipaddr);
 
-		char temp_buffer[128];
-		char send_buffer[128];
-		char receive_buffer[CHUNK_SIZE];
-		int index = 0;
 		std::string message = "QUERYSERVERS,P3_GROUP_7," + get_local_ip() + "," + src_port;
+		char send_buffer[128];
 
-		strcpy(temp_buffer, message.c_str());
-		send_buffer[0] = 0x02;
-
-		for (int i = 1; i <= strlen(temp_buffer); i++)
-		{
-			send_buffer[i] = temp_buffer[index];
-			index++;
-		}
-		send_buffer[strlen(temp_buffer) + 1] = 0x03;
+		construct_message(send_buffer, message);
 
 		if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
 		{
 			perror("No message was sent!");
 		}
+
 		std::string server_msg = "SERVERS,";
+		char receive_buffer[CHUNK_SIZE];
 		while (true)
 		{
 			memset(receive_buffer, 0, CHUNK_SIZE);
