@@ -133,7 +133,7 @@ std::string get_local_ip(){
  * Open socket for specified port.
  * @return -1 if unable to create the socket for any reason.
  */
-int open_socket(int portno, bool is_server_socket)
+int open_socket(int portno, std::string ipaddr = NULL, bool is_server_socket = false)
 {
 	struct sockaddr_in sk_addr; // address settings for bind()
 	int sock;					// socket opened for this port
@@ -170,7 +170,7 @@ int open_socket(int portno, bool is_server_socket)
 	memset(&sk_addr, 0, sizeof(sk_addr));
 
 	sk_addr.sin_family = AF_INET;
-	sk_addr.sin_addr.s_addr = INADDR_ANY;
+    sk_addr.sin_addr.s_addr = INADDR_ANY;
 	sk_addr.sin_port = htons(portno);
 
 	if (is_server_socket) {
@@ -254,6 +254,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     if ((tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 2)){
         std::cout << "Our servers: ";
         std::string response = "SERVERS,";
+
     }
 	else if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 5)
 	{
@@ -275,7 +276,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		}
         std::string local_ip = get_local_ip();
 		//Create a tcp socket
-		int connection_socket = open_socket(stoi(clients[clientSocket]->portnr), false);
+		int connection_socket = open_socket(stoi(clients[clientSocket]->portnr),clients[clientSocket]->ipaddr,false);
 
 		//Check if the connection was successful
 		int connection_successful = connect(connection_socket, (struct sockaddr *)&server_addr, sizeof(server_addr));
@@ -358,7 +359,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 						
 						//We do not want to connect to ourselves
 						if (group_id != "P3_GROUP_7") {
-							int sockfd = open_socket(stoi(port_number), true); //create a server socket
+							int sockfd = open_socket(stoi(port_number), clients[clientSocket]->ipaddr, true); //create a server socket
 							if (clients.find(sockfd) == clients.end()) { //find by key
 								clients[sockfd] = new Client(sockfd, true);
 								clients[sockfd]->ipaddr = ip_address;
@@ -423,6 +424,8 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         } else {
             // not found
             // cache the message and wait until someone fetches the message
+            std::vector<std::string> message;
+            //messages[tokens[1]] = message.push_back(tokens[4]);
         }
 
 	}
@@ -473,8 +476,8 @@ int main(int argc, char *argv[])
 	}
 
     // Setup socket for server to listen to
-    clientlistenSock = open_socket(atoi(argv[1]) - 1, true);
-    printf("Listening on port: %d\n", atoi(argv[1]) - 1);
+    clientlistenSock = open_socket(atoi(argv[1]) - 1, "Test",true);
+    printf("Listening on port client: %d\n", atoi(argv[1]) - 1);
 
     if (listen(clientlistenSock, BACKLOG) < 0)
     {
@@ -490,7 +493,7 @@ int main(int argc, char *argv[])
     }
 
 	// Setup socket for server to listen to
-	serverlistenSock = open_socket(atoi(argv[1]), true);
+	serverlistenSock = open_socket(atoi(argv[1]),"Test", true);
 	printf("Listening on port: %d\n", atoi(argv[1]));
 
 	if (listen(serverlistenSock, BACKLOG) < 0)
