@@ -334,7 +334,6 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 							substr = substr.erase(0, 9);
 						}
 					
-						std::cout << "length: " << substr.size() << std::endl;
 						if (substr.size() != 1) { //does not append the last line whereas it is an empty string. Don't ask, it works!!!!
 							servers_info.push_back(substr);
 						}
@@ -344,7 +343,6 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 					
 					std::vector<std::string> group_IP_portnr_list; 
 					for (auto server_info : servers_info) {
-						std::cout << "Server: " << server_info << std::endl;
 						std::stringstream ss(server_info);
 						std::string str;
 						while (getline(ss, str, ',')) {
@@ -358,20 +356,33 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 						std::string ip_address = group_IP_portnr_list[i+1];
 						std::string port_number = group_IP_portnr_list[i+2];
 						
-						// Create socket -> server socket or client socket
-						// Insert the ip addr, groupname, port number and socket into the instance clientguy from Client class
-						// clients.insert(std::pair<int, Client>)
-						// Insert into the map like this -> clients.insert(std::pair<int, Client>(sockfd, clientguy));
-						// Mission accomplished hopefully
+						
+						//We do not want to connect to ourselves
+						if (group_id != "P3_GROUP_7") {
+							int sockfd = open_socket(stoi(port_number), true); //create a server socket
+							if (clients.find(sockfd) == clients.end()) { //find by key
+								clients[sockfd] = new Client(sockfd, true);
+								clients[sockfd]->ipaddr = ip_address;
+								clients[sockfd]->name = group_id;
+								clients[sockfd]->portnr = port_number;
+							}
+							std::cout << "\n";
+							std::cout << clients[sockfd]->sock << std::endl;
+							std::cout << clients[sockfd]->name << std::endl;
+							std::cout << clients[sockfd]->ipaddr << std::endl;
+							std::cout << clients[sockfd]->portnr << std::endl;
+						}
 
 
 
-						std::cout << "groupId: " << group_id << std::endl;
-						std::cout << "ip_addr: " << ip_address << std::endl;
-						std::cout << "port_number: " << port_number << std::endl;
-						std::cout << "\n";
+
+						// std::cout << "groupId: " << group_id << std::endl;
+						// std::cout << "ip_addr: " << ip_address << std::endl;
+						// std::cout << "port_number: " << port_number << std::endl;
+						// std::cout << "\n";
 					}
-
+					
+					
                     //std::string receivestring = std::to_string(receive_buffer);
                     //connected(receivestring);
                     break;
