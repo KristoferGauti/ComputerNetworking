@@ -1,0 +1,15 @@
+# TODO
+
+## SERVER
+
+- QUERYSERVERS
+- KEEPALIVE,<No. of Messages>
+- FETCH MSGS,<GROUP ID>
+- SEND MSG,<TO GROUP ID>,<FROM GROUP ID>,<Message content>
+- STATUSREQ,<FROM GROUP ID>
+- STATUSRESP,FROM GROUP,TO GROUP,<group, msgs held>,...
+
+## CLIENT
+
+- FETCH MSG,GROUP ID
+- SEND MSG,GROUP ID,<message contents>
