@@ -30,6 +30,7 @@
 
 //Global variables
 #define CHUNK_SIZE 512
+#define MAX_SERVER 15
 
 // fix SOCK_NONBLOCK for OSX
 #ifndef SOCK_NONBLOCK
@@ -270,6 +271,8 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
 	FD_CLR(clientSocket, openSockets);
 }
 
+void sendMessage(char* buffer, std::string message)
+
 // Process command from client on the server
 void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
 {
@@ -432,6 +435,11 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         // use threads to wait a minute
         // check if we have some message stored for a server
         // send to the server KEEPALIVE,how many messages
+        int count = stoi(tokens[1]);
+
+        if(count > 0){
+            std::string message;
+        }
 	}
 	//server command
 	else if (tokens[0].compare("FETCH_MSGS") == 0 && tokens.size() == 2)
@@ -444,7 +452,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         std::string namefrom = connections[group]->name;
         std::string ipAddrfrom = connections[group]->ipaddr;
         std::string portnrfrom = connections[group]->portnr;
-        int sockfrom = std::string = connections[group]->sock;
+        int sockfrom = connections[group]->sock;
 
         if (messages.find(group) != messages.end())
         {
@@ -464,7 +472,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                 }
                 //store the message in the txt file
             }
-            std::vector<std::string> requested_messages = {};
+            requested_messages.clear();
             messages[group] = {};
         }
 	}
@@ -481,7 +489,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             std::string namefrom = connections[tokens[1]]->name;
             std::string ipAddrfrom = connections[tokens[1]]->ipaddr;
             std::string portnrfrom = connections[tokens[1]]->portnr;
-            int sockfrom = std::string = connections[tokens[1]]->sock;
+            int sockfrom = connections[tokens[1]]->sock;
 
             std::string message = tokens[3];
 
@@ -615,7 +623,7 @@ int main(int argc, char *argv[])
 				{
 					Client *client = pair.second;
 
-					if (FD_ISSET(client->sock, &readSockets))
+					if (FD_ISSET(client->sock, &readSockets)) // check if server count exceeds 15
 					{
 						// recv() == 0 means client has closed connection
 						if (recv(client->sock, buffer, sizeof(buffer), MSG_DONTWAIT) == 0)
