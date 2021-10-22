@@ -188,7 +188,7 @@ int open_socket(int portno, bool is_server_socket = false)
 	memset(&sk_addr, 0, sizeof(sk_addr));
 
 	sk_addr.sin_family = AF_INET;
-    sk_addr.sin_addr.s_addr = INADDR_ANY;
+	sk_addr.sin_addr.s_addr = INADDR_ANY;
 	sk_addr.sin_port = htons(portno);
 
 	if (is_server_socket)
@@ -232,7 +232,7 @@ int establish_connection(std::string port_nr, std::string ip_addr)
 
 void construct_message(char *send_buffer, std::string message)
 {
-	char temp_buffer[message.size()+2];
+	char temp_buffer[message.size() + 2];
 	strcpy(temp_buffer, message.c_str());
 	send_buffer[0] = 0x02;
 	int index = 0;
@@ -242,6 +242,40 @@ void construct_message(char *send_buffer, std::string message)
 		index++;
 	}
 	send_buffer[strlen(temp_buffer) + 1] = 0x03;
+}
+void server_vector(std::string message, std::vector<std::string> *servers_info)
+{
+	std::stringstream ss(message);
+	int index = 0;
+
+	while (ss.good())
+	{
+		std::string substr;
+		std::getline(ss, substr, ';');
+		if (index == 0)
+		{ //Erasing SERVERS from the first string to get the string: groupId,IP,port
+			substr = substr.erase(0, 9);
+		}
+
+		if (substr.size() != 1)
+		{ //does not append the last line whereas it is an empty string. Don't ask, it works!!!!
+			servers_info->push_back(substr);
+		}
+		index++;
+	}
+}
+
+void split_commas(std::vector<std::string> *servers_info, std::vector<std::string> *group_IP_portnr_list)
+{
+	for (auto server_info : *servers_info)
+	{
+		std::stringstream ss(server_info);
+		std::string str;
+		while (getline(ss, str, ','))
+		{
+			group_IP_portnr_list->push_back(str);
+		}
+	}
 }
 
 /**
@@ -294,14 +328,12 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		}
 	}
 
-
 	//CONNECT,<Group id>,<IP_address>,<port number>       QUERYSERVERS,P3_GROUP_7,130.208.243.61,4002
-    if ((tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 2)){
-        std::cout << "Our servers: ";
-        std::string response = "SERVERS,";
-
-
-    }
+	if ((tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 2))
+	{
+		std::cout << "Our servers: ";
+		std::string response = "SERVERS,";
+	}
 	else if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 4)
 	{
 		clients[clientSocket]->name = tokens[1];
@@ -314,7 +346,6 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		char send_buffer[128];
 
 		construct_message(send_buffer, message);
-		
 
 		if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
 		{
@@ -347,37 +378,13 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 				{
 					std::cout << "The message we got back: " << receive_buffer << std::endl;
 					std::string string_message = (std::string)receive_buffer;
-
-					std::stringstream ss(string_message);
 					std::vector<std::string> servers_info;
 
-					int index = 0;
-					while (ss.good())
-					{
-						std::string substr;
-						std::getline(ss, substr, ';');
-						if (index == 0)
-						{ //Erasing SERVERS from the first string to get the string: groupId,IP,port
-							substr = substr.erase(0, 9);
-						}
-
-						if (substr.size() != 1)
-						{ //does not append the last line whereas it is an empty string. Don't ask, it works!!!!
-							servers_info.push_back(substr);
-						}
-						index++;
-					}
+					server_vector(string_message, &servers_info);
 
 					std::vector<std::string> group_IP_portnr_list;
-					for (auto server_info : servers_info)
-					{
-						std::stringstream ss(server_info);
-						std::string str;
-						while (getline(ss, str, ','))
-						{
-							group_IP_portnr_list.push_back(str);
-						}
-					}
+
+					split_commas(&servers_info, &group_IP_portnr_list);
 
 					for (int i = 0; i < group_IP_portnr_list.size(); i += 3)
 					{
@@ -390,7 +397,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 						{
 							int sockfd = open_socket(stoi(port_number), true); //create a server socket
 							if (clients.find(sockfd) == clients.end())
-							{ //find by key
+							{
 								clients[sockfd] = new Client(sockfd, true);
 								clients[sockfd]->ipaddr = ip_address;
 								clients[sockfd]->name = group_id;
@@ -404,10 +411,11 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 						}
 						server_msg += group_IP_portnr_list[i] + "," + group_IP_portnr_list[i + 1] + "," + group_IP_portnr_list[i + 2] + ';';
 					}
-					char send_buffer[server_msg.size()+2];
+
+					char send_buffer[server_msg.size() + 2];
 					construct_message(send_buffer, server_msg);
 					std::cout << "send_buffer to instructor server: " << send_buffer << std::endl;
-					if (send(connection_socket, send_buffer, server_msg.size()+2, 0) < 0)
+					if (send(connection_socket, send_buffer, server_msg.size() + 2, 0) < 0)
 					{
 						perror("No message was sent!");
 					}
@@ -441,17 +449,19 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 		// some SEND MSG stuff
 		std::cout << "I am a message from SEND_MSG" << std::endl;
-        if ( connections.find(tokens[1]) != connections.end() ) {
-            // found
-            // send the msg content tokens[3]
-            //
-        } else {
-            // not found
-            // cache the message and wait until someone fetches the message
-            std::vector<std::string> message;
-            //messages[tokens[1]] = message.push_back(tokens[4]);
-        }
-
+		if (connections.find(tokens[1]) != connections.end())
+		{
+			// found
+			// send the msg content tokens[3]
+			//
+		}
+		else
+		{
+			// not found
+			// cache the message and wait until someone fetches the message
+			std::vector<std::string> message;
+			//messages[tokens[1]] = message.push_back(tokens[4]);
+		}
 	}
 	else if (tokens[0].compare("STATUSREQ") == 0)
 	{
@@ -496,7 +506,6 @@ int main(int argc, char *argv[])
 		printf("Usage: chat_server <ip port>\n");
 		exit(0);
 	}
-
 
 	// Setup socket for server to listen to
 	listenSock = open_socket(atoi(argv[1]), true);
