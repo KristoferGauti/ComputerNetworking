@@ -81,7 +81,7 @@ bool valid_message(char *buffer)
 void parse_message(char *buffer, char *newBuffer)
 {
 	int index = 0;
-	for (int i = 1; i < strlen(buffer) - 1; i++)
+	for (std::size_t i = 1; i < strlen(buffer) - 1; i++)
 	{
 		newBuffer[index] = buffer[i];
 		index++;
@@ -236,7 +236,7 @@ void construct_message(char *send_buffer, std::string message)
 	strcpy(temp_buffer, message.c_str());
 	send_buffer[0] = 0x02;
 	int index = 0;
-	for (int i = 1; i <= strlen(temp_buffer); i++)
+	for (std::size_t i = 1; i <= message.size(); i++)
 	{
 		send_buffer[i] = temp_buffer[index];
 		index++;
@@ -314,7 +314,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 	// Split command from client into tokens for parsing
 	std::stringstream stream(buffer);
 
-	for (int i = 0; i <= strlen(buffer); i++)
+	for (std::size_t i = 0; i <= strlen(buffer); i++)
 	{
 
 		if (buffer[i] == ',' || i == strlen(buffer))
@@ -329,7 +329,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 	}
 
 	//CONNECT,<Group id>,<IP_address>,<port number>       QUERYSERVERS,P3_GROUP_7,130.208.243.61,4002
-	if ((tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 2))
+	if ((tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 1))
 	{
 		std::cout << "Our servers: ";
 		std::string response = "SERVERS,";
@@ -364,7 +364,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 			}
 			else
 			{
-				char new_receivebuffer[128];
+                char new_receivebuffer[CHUNK_SIZE];
 				std::string receive(receive_buffer);
 				std::size_t found = receive.find("QUERYSERVERS");
 				if (found != std::string::npos)
@@ -386,7 +386,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 					split_commas(&servers_info, &group_IP_portnr_list);
 
-					for (int i = 0; i < group_IP_portnr_list.size(); i += 3)
+					for (std::size_t i = 0; i < group_IP_portnr_list.size(); i += 3)
 					{
 						std::string group_id = group_IP_portnr_list[i];
 						std::string ip_address = group_IP_portnr_list[i + 1];
