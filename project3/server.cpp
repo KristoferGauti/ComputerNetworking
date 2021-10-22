@@ -83,7 +83,7 @@ bool valid_message(char *buffer)
 void parse_message(char *buffer, char *newBuffer)
 {
 	int index = 0;
-	for (int i = 1; i < strlen(buffer) - 1; i++)
+	for (std::size_t i = 1; i < strlen(buffer) - 1; i++)
 	{
 		newBuffer[index] = buffer[i];
 		index++;
@@ -238,7 +238,7 @@ void construct_message(char *send_buffer, std::string message)
 	strcpy(temp_buffer, message.c_str());
 	send_buffer[0] = 0x02;
 	int index = 0;
-	for (int i = 1; i <= strlen(temp_buffer); i++)
+	for (std::size_t i = 1; i <= strlen(temp_buffer); i++)
 	{
 		send_buffer[i] = temp_buffer[index];
 		index++;
@@ -288,7 +288,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     messages.insert({"anton", ble});
 
 
-    for (int i = 0; i <= strlen(buffer); i++)
+    for (std::size_t i = 0; i <= strlen(buffer); i++)
 	{
 
 		if (buffer[i] == ',' || i == strlen(buffer))
@@ -305,8 +305,17 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 	// response to other servers
 	if ((tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 2))
 	{
-		std::cout << "Our servers: ";
+		std::cout << "Our servers: " << std::endl;
 		std::string response = "SERVERS,";
+        for(auto const &hello : messages) {
+            //std::cout << hello.first << std::endl;
+            for (auto const &ble: hello.second) {
+                //std::cout << ble << std::endl;
+                response += ble + ',';
+
+            }
+            response += ';';
+        }
 	}
 
 	//CONNECT,<Group id>,<IP_address>,<port number>       QUERYSERVERS,P3_GROUP_7,130.208.243.61,4002
@@ -389,7 +398,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 						}
 					}
 
-					for (int i = 0; i < group_IP_portnr_list.size(); i += 3)
+					for (std::size_t i = 0; i < group_IP_portnr_list.size(); i += 3)
 					{
 						std::string group_id = group_IP_portnr_list[i];
 						std::string ip_address = group_IP_portnr_list[i + 1];
