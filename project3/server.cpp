@@ -338,8 +338,8 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 				std::size_t found = receive.find("QUERYSERVERS");
 				if (found != std::string::npos)
 				{
-					// std::cout << "The message we got back: " << receive_buffer << std::endl;
-					// std::cout << "Sending to Queryserver"<< std::endl;
+					std::cout << "The message we got back from the server that we connected to: " << receive_buffer << std::endl;
+					std::cout << "Sending to Queryserver"<< std::endl;
 					//Work in sending server message
 					strcpy(new_receivebuffer, receive_buffer);
 				}
