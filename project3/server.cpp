@@ -456,7 +456,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                 perror("Unable to send");
             }
             else{
-                printf("Message: %s sent successfully", message);
+                printf("Message: %s sent successfully", message.c_str());
             }
         }
 	}
@@ -487,7 +487,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                     perror("Unable to send");
                 }
                 else{
-                    printf("Message: %s sent succesfully", message);
+                    printf("Message: %s sent succesfully", message.c_str());
                 }
                 //store the message in the txt file
             }
