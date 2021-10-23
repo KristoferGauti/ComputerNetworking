@@ -227,7 +227,7 @@ int establish_connection(std::string port_nr, std::string ip_addr)
 	}
 
 	//Create a tcp socket
-	int connection_socket = open_socket(stoi(port_nr), true);
+	int connection_socket = open_socket(stoi(port_nr), false);
 
 	if (connect(connection_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
 	{
@@ -366,6 +366,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 	else if (tokens[0].compare("CONNECT") == 0 && tokens.size() == 3)
 	{
+		std::cout << tokens[2] << ", " << tokens[1] << std::endl;
 
 		int connection_socket = establish_connection(tokens[2], tokens[1]);
 		clients[connection_socket] = new Client(connection_socket, true);
@@ -392,7 +393,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 			}
 			else
 			{
-				char new_receivebuffer[128];
 				std::string receive(receive_buffer);
 				std::size_t found = receive.find("QUERYSERVERS");
 				if (found != std::string::npos)
@@ -422,24 +422,27 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 						//We do not want to connect to ourselves
 						if (group_id != GROUP)
 						{
-							int sockfd = open_socket(stoi(port_number), true); //create a server socket
-							if (clients.find(sockfd) == clients.end())
-							{
-								clients[sockfd] = new Client(sockfd, true);
-								clients[sockfd]->ipaddr = ip_address;
-								clients[sockfd]->name = group_id;
-								clients[sockfd]->portnr = port_number;
+							if (4000 <= stoi(port_number) && stoi(port_number) <= 4100) {
+								int sockfd = open_socket(stoi(port_number), false); //create a server socket
+								if (clients.find(sockfd) == clients.end())
+								{
+									clients[sockfd] = new Client(sockfd, true);
+									clients[sockfd]->ipaddr = ip_address;
+									clients[sockfd]->name = group_id;
+									clients[sockfd]->portnr = port_number;
 
-								connections[group_id] = new Client(sockfd, true);
-								connections[group_id]->ipaddr = ip_address;
-								connections[group_id]->name = group_id;
-								connections[group_id]->portnr = port_number;
+									connections[group_id] = new Client(sockfd, true);
+									connections[group_id]->ipaddr = ip_address;
+									connections[group_id]->name = group_id;
+									connections[group_id]->portnr = port_number;
+								}
 							}
 						}
 					}
 
 					char send_buffer[server_msg.size() + 2];
 					construct_message(send_buffer, server_msg);
+					printf("%lu", strlen(send_buffer));
 					std::cout << "send_buffer to instructor server: " << send_buffer << std::endl;
 					if (send(connection_socket, send_buffer, server_msg.size() + 2, 0) < 0)
 					{
