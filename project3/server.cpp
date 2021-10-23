@@ -360,6 +360,8 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 		outgoing[tokens[1]].push_back(tokens[2]);
 		server_msg = "Message sent";
 	}
+
+
 	else {
 		server_msg = "Unknown command: " + message + "\n"
 			+ "COMMANDS:\n"
@@ -374,7 +376,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 }
 
 // Process command from client on the server
-void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
+void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
 {
 	std::string message = std::string(buffer);
 	message.erase(0, 1);
@@ -396,24 +398,26 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 	{
 		server_msg = "SERVERS,";
 		// store information about client
-		servers[clientSocket] = clients[clientSocket];
-		clients.erase(clientSocket);
+		servers[serverSocket] = clients[serverSocket];
+		clients.erase(serverSocket);
 
-		servers[clientSocket]->name = tokens[1];
-		servers[clientSocket]->ipaddr = tokens[2];
-		servers[clientSocket]->portnr = tokens[3];
+		servers[serverSocket]->name = tokens[1];
+		servers[serverSocket]->ipaddr = tokens[2];
+		servers[serverSocket]->portnr = tokens[3];
 
 		for (auto const &pair : clients){
 			Client *client = pair.second;
 			server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ';';
-		}	
+		}
+
+		send(serverSocket, server_msg.c_str(), server_msg.length(),0);
 	}
 	else if (tokens[0].compare("LEAVE") == 0)
 	{
 		// Close the socket, and leave the socket handling
 		// code to deal with tidying up clients etc. when
 		// select() detects the OS has torn down the connection.
-		closeClient(clientSocket, openSockets, maxfds);
+		closeClient(serverSocket, openSockets, maxfds);
 	}
 
 	else if (tokens[0].compare("KEEPALIVE") == 0)
@@ -468,7 +472,7 @@ void serverCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 	char send_buffer[server_msg.size() + 2];
 	construct_message(send_buffer, server_msg);
-	send(clientSocket, send_buffer, server_msg.size() + 2, 0);
+	send(serverSocket, send_buffer, server_msg.size() + 2, 0);
 }
 
 int main(int argc, char *argv[])
