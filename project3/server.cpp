@@ -73,7 +73,7 @@ public:
 // clients and unidentified servers
 std::map<int, Client *> clients;
 // identified servers
-std::map<int, Client *> servers;
+std::map<int, Client *> connected_servers;
 
 std::map<std::string, Client *> connections;
 
@@ -188,7 +188,7 @@ int open_socket(int portno, bool is_server_socket = true)
 	}
 	set = 1;
 #ifdef __APPLE__
-	if (setsockopt(sock, SOL_SOCKET, SOCK_NONBLOCK, &set, sizeof(set)) < 0)
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
 	{
 		perror("Failed to set SOCK_NOBBLOCK");
 	}
@@ -332,7 +332,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 	if (tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 1)
 	{
-		for (auto const &pair : servers)
+		for (auto const &pair : connected_servers)
 		{
 			Client *client = pair.second;
 			server_msg += client->name + ",";
@@ -487,12 +487,12 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 	{
 		server_msg = "SERVERS,";
 		// store information about client
-		servers[serverSocket] = clients[serverSocket];
+		connected_servers[serverSocket] = clients[serverSocket];
 		clients.erase(serverSocket);
 
-		servers[serverSocket]->name = tokens[1];
-		servers[serverSocket]->ipaddr = tokens[2];
-		servers[serverSocket]->portnr = tokens[3];
+		connected_servers[serverSocket]->name = tokens[1];
+		connected_servers[serverSocket]->ipaddr = tokens[2];
+		connected_servers[serverSocket]->portnr = tokens[3];
 
 		for (auto const &pair : clients)
 		{
@@ -637,28 +637,63 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             //messages[tokens[1]] = message.push_back(tokens[4]);
         }
 	}
+	//STATUSREQ,<from group id>   STATUSREQ,P3_GROUP_7
 	else if (tokens[0].compare("STATUSREQ") == 0)
 	{
 		// some STATUSREQ stuff
 		std::cout << "I am a message from STATUSREQ" << std::endl;
+
+		std::string response = "STATUSRESP," + GROUP + connected_servers[serverSocket]->name; //connected_servers
+		for (auto const &msg_pair : messages) {
+			if (msg_pair.second.size() == 0) {
+				continue;
+			}
+			response += msg_pair.first + std::string(msg_pair.size());			
+		}
+		char send_buffer[response.size() + 2];
+		construct_message(send_buffer, response);
+
+		if (send(serverSocket, send_buffer, response.size()+2, 0) < 0) {
+			perror("Sending STATUSRESP failed!");
+		}
 	}
+
 	else if (tokens[0].compare("STATUSRESP") == 0)
 	{
 		// some STATUSRESP stuff
 		std::cout << "I am a message from STATUSRESP" << std::endl;
-	}
-	//client command
-	else if ((tokens[0].compare("SEND_MSG") == 0) && tokens.size() == 4)
-	{
-	}
-	//client command
-	else if ((tokens[0].compare("FETCH_MSG") == 0) && tokens.size() == 4)
-	{
-	}
 
-	char send_buffer[server_msg.size() + 2];
-	construct_message(send_buffer, server_msg);
-	send(serverSocket, send_buffer, server_msg.size() + 2, 0);
+		std::string response = "STATUSRESP," + GROUP + connected_servers[serverSocket]->name; //connected_servers
+		for (auto const &msg_pair : messages) {
+			if (msg_pair.second.size() == 0) {
+				continue;
+			}
+			response += msg_pair.first + std::string(msg_pair.size());			
+		}
+		char send_buffer[response.size() + 2];
+		construct_message(send_buffer, response);
+
+		if (send(serverSocket, send_buffer, response.size()+2, 0) < 0) {
+			perror("Sending STATUSRESP failed!");
+		}
+
+		char receive_buffer[CHUNK_SIZE];
+
+		while (true)
+		{
+			memset(receive_buffer, 0, CHUNK_SIZE);
+			if (recv(serverSocket, receive_buffer, CHUNK_SIZE, 0) < 0)
+			{
+				perror("Message was not received!");
+				break;
+			}
+			else
+			{
+				char newBuffer[strlen(receive_buffer)+2];
+				parse_message(receive_buffer, newBuffer);
+				
+			}
+	}
 }
 
 int main(int argc, char *argv[])
@@ -770,7 +805,7 @@ int main(int argc, char *argv[])
 						clients.erase(c->sock);
 				}
 				// SERVERS
-				for (auto const &pair : servers)
+				for (auto const &pair : connected_servers)
 				{
 					Client *client = pair.second;
 
@@ -792,7 +827,7 @@ int main(int argc, char *argv[])
 					}
 					// Remove client from the servers list
 					for (auto const &c : disconnectedClients)
-						servers.erase(c->sock);
+						connected_servers.erase(c->sock);
 				}
 			}
 		}
