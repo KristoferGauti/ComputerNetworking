@@ -529,13 +529,12 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         int count = stoi(tokens[1]);
         // check if the message that we got from another server has any message for us
         if(count > 0){
-            std::string message;
             // initialize variables so that we can send FETCH_MSGS to the server that sent to us a KEEPALIVE message
-            std::string nameto = clients[clientSocket]->name;
-            std::string ipAddrto = clients[clientSocket]->ipaddr;
-            std::string portnrto = clients[clientSocket]->portnr;
+            std::string nameto = clients[serverSocket]->name;
+            std::string ipAddrto = clients[serverSocket]->ipaddr;
+            std::string portnrto = clients[serverSocket]->portnr;
             // initialize the message variable with a global variable that has the value "P3_GROUP_7"
-            std::string message = "FETCH_MSGS," + GROUP;
+            std::string message = std::string("FETCH_MSGS,") + std::string(GROUP);
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
@@ -629,9 +628,9 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             // not found
             // cache the message and wait until someone fetches the message
             std::vector<std::string> storedMessage;
-            storedMessage.push_back(message)
+            storedMessage.push_back(message);
 
-            messages.insert(std::string, std::vector<std::string> {(nameto, storedMessage)})
+            messages.insert({nameto, storedMessage});
             //messages[tokens[1]] = message.push_back(tokens[4]);
         }
 	}
