@@ -745,8 +745,8 @@ int main(int argc, char *argv[])
     finished = false;
 
     std::thread keepAlive_thread(sendKeepAlive);
-    //std::string port = std::string(argv[1]);
-    //std::thread updates_thread(sendUpdates, std::ref(port));
+    std::string port = std::string(argv[1]);
+    std::thread updates_thread(sendUpdates, std::ref(port));
 
     while (!finished)
     {
