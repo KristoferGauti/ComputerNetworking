@@ -563,7 +563,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         std::string nameto = connections[group]->name;
         std::string ipAddrto = connections[group]->ipaddr;
         std::string portnrto = connections[group]->portnr;
-        int sockto = connections[group]->sock;
+        //int sockto = connections[group]->sock;
 
         // check if messages contains this group as key
         if (messages.find(group) != messages.end())
@@ -613,7 +613,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         if ( connections.find(tokens[1]) != connections.end() ) {
             // found
             // send the msg content tokens[3]
-            int sockto = connections[tokens[1]]->sock;
+            //int sockto = connections[tokens[1]]->sock;
 
             char send_buffer[message.size() + 2];
 
@@ -643,12 +643,12 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 		// some STATUSREQ stuff
 		std::cout << "I am a message from STATUSREQ" << std::endl;
 
-		std::string response = "STATUSRESP," + GROUP + connected_servers[serverSocket]->name; //connected_servers
+		std::string response = "STATUSRESP,P3_GROUP_7," + connected_servers[serverSocket]->name; //connected_servers
 		for (auto const &msg_pair : messages) {
 			if (msg_pair.second.size() == 0) {
 				continue;
 			}
-			response += msg_pair.first + std::string(msg_pair.size());			
+			response += msg_pair.first + std::to_string(msg_pair.second.size());			
 		}
 		char send_buffer[response.size() + 2];
 		construct_message(send_buffer, response);
@@ -663,12 +663,12 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 		// some STATUSRESP stuff
 		std::cout << "I am a message from STATUSRESP" << std::endl;
 
-		std::string response = "STATUSRESP," + GROUP + connected_servers[serverSocket]->name; //connected_servers
+		std::string response = "STATUSRESP,P3_GROUP_7," + connected_servers[serverSocket]->name; //connected_servers
 		for (auto const &msg_pair : messages) {
 			if (msg_pair.second.size() == 0) {
 				continue;
 			}
-			response += msg_pair.first + std::string(msg_pair.size());			
+			response += msg_pair.first + std::to_string(msg_pair.second.size());			
 		}
 		char send_buffer[response.size() + 2];
 		construct_message(send_buffer, response);
@@ -691,8 +691,9 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 			{
 				char newBuffer[strlen(receive_buffer)+2];
 				parse_message(receive_buffer, newBuffer);
-				
+
 			}
+		}
 	}
 }
 
