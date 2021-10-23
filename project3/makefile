@@ -2,7 +2,7 @@ CC = g++
 CPP = c++11
 all: clean client server
 client:
-	${CC} -Wall -std=${CPP} -pthread client.cpp -o client
+	${CC} -Wall -std=${CPP} client.cpp -o client -pthread -lpthread
 server:
 	${CC} -Wall -std=${CPP} server.cpp -o server
 ip:
