@@ -30,6 +30,7 @@
 
 //Global variables
 #define CHUNK_SIZE 512
+#define GROUP "P3_GROUP_7"
 
 // fix SOCK_NONBLOCK for OSX
 #ifndef SOCK_NONBLOCK
@@ -419,7 +420,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 						server_msg += group_IP_portnr_list[i] + "," + group_IP_portnr_list[i + 1] + "," + group_IP_portnr_list[i + 2] + ';';
 
 						//We do not want to connect to ourselves
-						if (group_id != "P3_GROUP_7")
+						if (group_id != GROUP)
 						{
 							int sockfd = open_socket(stoi(port_number), true); //create a server socket
 							if (clients.find(sockfd) == clients.end())
@@ -517,24 +518,28 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
 	else if (tokens[0].compare("KEEPALIVE") == 0)
 	{
-		// some KEEPALIVE stuff
-		std::cout << "I am a message from KEEPALIVE" << std::endl;
         // some KEEPALIVE stuff
         std::cout << "I am a message from KEEPALIVE" << std::endl;
+        // next three comments are for the periodically KEEPALIVE that our server sends
         // use threads to wait a minute
         // check if we have some message stored for a server
         // send to the server KEEPALIVE,how many messages
-        int count = stoi(tokens[1]);
 
+
+        int count = stoi(tokens[1]);
+        // check if the message that we got from another server has any message for us
         if(count > 0){
             std::string message;
-            std::string namefrom = clients[clientSocket]->name;
-            std::string ipAddrfrom = clients[clientSocket]->ipaddr;
-            std::string portnrfrom = clients[clientSocket]->portnr;
+            // initialize variables so that we can send FETCH_MSGS to the server that sent to us a KEEPALIVE message
+            std::string nameto = clients[clientSocket]->name;
+            std::string ipAddrto = clients[clientSocket]->ipaddr;
+            std::string portnrto = clients[clientSocket]->portnr;
+            // initialize the message variable with a global variable that has the value "P3_GROUP_7"
+            std::string message = "FETCH_MSGS," + GROUP;
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrfrom, ipAddrfrom);
+            int connection_socket = establish_connection(portnrto, ipAddrto);
 
             if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
                 perror("Unable to send");
@@ -547,38 +552,45 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 	//server command
 	else if (tokens[0].compare("FETCH_MSGS") == 0 && tokens.size() == 3)
 	{
-		// some FETCH MSGS stuff
-		std::cout << "I am a message from FETCH_MSGS" << std::endl;
-
         // some FETCH MSGS stuff
         std::cout << "I am a message from FETCH_MSGS" << std::endl;
 
         // get group number
         std::string group = tokens[1];
-        std::string namefrom = connections[group]->name;
-        std::string ipAddrfrom = connections[group]->ipaddr;
-        std::string portnrfrom = connections[group]->portnr;
-        int sockfrom = connections[group]->sock;
+        // find the relevant group from connections using the given group id
+        std::string nameto = connections[group]->name;
+        std::string ipAddrto = connections[group]->ipaddr;
+        std::string portnrto = connections[group]->portnr;
+        int sockto = connections[group]->sock;
 
+        // check if messages contains this group as key
         if (messages.find(group) != messages.end())
         {
-            std::vector<std::string> requested_messages = messages[group];
-            for (std::string message : requested_messages)
+            // is so create a new vector
+            //std::vector<std::string> requested_messages = messages[group];
+            std::string message;
+            // go through each message in messages and append it to the message string
+            for (auto const &data: messages[group])
             {
-                char send_buffer[message.size() + 2];
+             message += ',' + data;
+            }
+            // create a char array with the size of the message + STX and ETX
+            char send_buffer[message.size() + 2];
 
-                construct_message(send_buffer, message);
-                int connection_socket = establish_connection(portnrfrom, ipAddrfrom);
+            construct_message(send_buffer, message);
+            int connection_socket = establish_connection(portnrto, ipAddrto);
 
-                if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
-                    perror("Unable to send");
-                }
-                else{
-                    printf("Message: %s sent succesfully", message.c_str());
+            if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
+                perror("Unable to send");
+            }
+            else{
+                // print the message if successful in sending it to the receiver
+                printf("Message: %s sent succesfully", message.c_str());
                 }
                 //store the message in the txt file
-            }
-            requested_messages.clear();
+
+            // delete this group id messages as we have sent them to the one who requested them
+            messages[group].clear();
             messages[group] = {};
         }
 	}
@@ -587,21 +599,24 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 	{
 
         std::cout << "I am a message from SEND_MSG" << std::endl;
+        // initialize variables so that we can send the message that the one server has for the other or if we don't have it stored, caching it
+        std::string nameto = connections[tokens[1]]->name;
+        std::string ipAddrto = connections[tokens[1]]->ipaddr;
+        std::string portnrto = connections[tokens[1]]->portnr;
+
+        // the message that we received
+        std::string message = tokens[3];
+
+        // check if we are connected or have their information stored in connection map
         if ( connections.find(tokens[1]) != connections.end() ) {
             // found
             // send the msg content tokens[3]
-            //
-            std::string namefrom = connections[tokens[1]]->name;
-            std::string ipAddrfrom = connections[tokens[1]]->ipaddr;
-            std::string portnrfrom = connections[tokens[1]]->portnr;
-            int sockfrom = connections[tokens[1]]->sock;
-
-            std::string message = tokens[3];
+            int sockto = connections[tokens[1]]->sock;
 
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrfrom, ipAddrfrom);
+            int connection_socket = establish_connection(portnrto, ipAddrto);
 
             if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
                 perror("Unable to send");
@@ -610,10 +625,13 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
                 printf("Message: %s sent succesfully", message.c_str());
             }
 
-        } else {
+        } else { // if we have not connected to the receiving then we have to cache it and wait for when someone fetches the message
             // not found
             // cache the message and wait until someone fetches the message
-            std::vector<std::string> message;
+            std::vector<std::string> storedMessage;
+            storedMessage.push_back(message)
+
+            messages.insert(std::string, std::vector<std::string> {(nameto, storedMessage)})
             //messages[tokens[1]] = message.push_back(tokens[4]);
         }
 	}
