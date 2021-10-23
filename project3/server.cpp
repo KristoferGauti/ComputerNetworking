@@ -226,7 +226,7 @@ int establish_connection(std::string port_nr, std::string ip_addr)
 	}
 
 	//Create a tcp socket
-	int connection_socket = open_socket(stoi(port_nr), true);
+	int connection_socket = open_socket(stoi(port_nr), false);
 
 	if (connect(connection_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
 	{
@@ -285,6 +285,17 @@ void split_commas(std::vector<std::string> *servers_info, std::vector<std::strin
 	}
 }
 
+void send_queryservers(int connection_socket, std::string src_port)
+{
+	std::string message = "QUERYSERVERS,P3_GROUP_7," + get_local_ip() + "," + src_port;
+	char sendBuffer[message.size() + 2];
+	construct_message(sendBuffer, message);
+	if (send(connection_socket, sendBuffer, message.length() + 2, 0) < 0)
+	{
+		perror("Sending message failed");
+	}
+}
+
 /**
  * Close a client's connection, remove it from the client list, and
  * tidy up select sockets afterwards.
@@ -331,7 +342,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 	if (tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 1)
 	{
-		for (auto const &pair : servers)
+		for (auto const &pair : connections)
 		{
 			Client *client = pair.second;
 			server_msg += client->name + ",";
@@ -365,21 +376,11 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 	else if (tokens[0].compare("CONNECT") == 0 && tokens.size() == 3)
 	{
-
 		int connection_socket = establish_connection(tokens[2], tokens[1]);
 		clients[connection_socket] = new Client(connection_socket, true);
 
-		std::string message = "QUERYSERVERS,P3_GROUP_7," + get_local_ip() + "," + src_port;
-		printf("%s", message.c_str());
+		send_queryservers(connection_socket, src_port);
 
-		char sendBuffer[message.size() + 2];
-		construct_message(sendBuffer, message);
-		if (send(connection_socket, sendBuffer, message.length() + 2, 0) < 0)
-		{
-			perror("Sending message failed");
-		}
-
-		std::string server_msg = "SERVERS,";
 		char receive_buffer[CHUNK_SIZE];
 		while (true)
 		{
@@ -391,7 +392,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 			}
 			else
 			{
-				char new_receivebuffer[128];
 				std::string receive(receive_buffer);
 				std::size_t found = receive.find("QUERYSERVERS");
 				if (found != std::string::npos)
@@ -400,7 +400,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 				}
 				else
 				{
-					std::cout << "The message we got back: " << receive_buffer << std::endl;
+					std::cout << "OUR MESSAGE: " << receive_buffer << std::endl;
 					std::string string_message = (std::string)receive_buffer;
 					std::vector<std::string> servers_info;
 
@@ -412,34 +412,35 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 					for (int i = 0; i < group_IP_portnr_list.size(); i += 3)
 					{
+
 						std::string group_id = group_IP_portnr_list[i];
 						std::string ip_address = group_IP_portnr_list[i + 1];
 						std::string port_number = group_IP_portnr_list[i + 2];
 
-						server_msg += group_IP_portnr_list[i] + "," + group_IP_portnr_list[i + 1] + "," + group_IP_portnr_list[i + 2] + ';';
+						int sockfd = open_socket(stoi(port_number), false);
 
-						//We do not want to connect to ourselves
-						if (group_id != "P3_GROUP_7")
+						// store the server we just connected to in our connection list
+						if (ip_address == tokens[1] && port_number == tokens[2])
 						{
-							int sockfd = open_socket(stoi(port_number), true); //create a server socket
-							if (clients.find(sockfd) == clients.end())
-							{
-								clients[sockfd] = new Client(sockfd, true);
-								clients[sockfd]->ipaddr = ip_address;
-								clients[sockfd]->name = group_id;
-								clients[sockfd]->portnr = port_number;
-
-								connections[group_id] = new Client(sockfd, true);
-								connections[group_id]->ipaddr = ip_address;
-								connections[group_id]->name = group_id;
-								connections[group_id]->portnr = port_number;
-							}
+							connections[group_id] = new Client(sockfd, true);
+							connections[group_id]->name = group_id;
+							connections[group_id]->ipaddr = ip_address;
+							connections[group_id]->portnr = port_number;
 						}
+					}
+
+					std::string server_msg = "SERVERS,";
+					server_msg += "P3_GROUP_7," + get_local_ip() + "," + src_port + ";";
+
+					for (auto &pair : connections)
+					{
+						Client *client = pair.second;
+						server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ";";
 					}
 
 					char send_buffer[server_msg.size() + 2];
 					construct_message(send_buffer, server_msg);
-					std::cout << "send_buffer to instructor server: " << send_buffer << std::endl;
+					std::cout << "OUR REPLY: " << send_buffer << std::endl;
 					if (send(connection_socket, send_buffer, server_msg.size() + 2, 0) < 0)
 					{
 						perror("No message was sent!");
@@ -449,7 +450,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 			}
 		}
 	}
-
 	else
 	{
 		server_msg = "Unknown command: " + message + "\n" + "COMMANDS:\n" + "  - QUERYSERVERS\n" + "  - FETCH_MSG,<GROUP_ID>\n" + "  - SEND_MSG,<GROUP_ID>,<MESSAGE>";
@@ -607,7 +607,6 @@ int main(int argc, char *argv[])
 	}
 
 	finished = false;
-
 	while (!finished)
 	{
 		// Get modifiable copy of readSockets
