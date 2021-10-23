@@ -519,6 +519,30 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 	{
 		// some KEEPALIVE stuff
 		std::cout << "I am a message from KEEPALIVE" << std::endl;
+        // some KEEPALIVE stuff
+        std::cout << "I am a message from KEEPALIVE" << std::endl;
+        // use threads to wait a minute
+        // check if we have some message stored for a server
+        // send to the server KEEPALIVE,how many messages
+        int count = stoi(tokens[1]);
+
+        if(count > 0){
+            std::string message;
+            std::string namefrom = clients[clientSocket]->name;
+            std::string ipAddrfrom = clients[clientSocket]->ipaddr;
+            std::string portnrfrom = clients[clientSocket]->portnr;
+            char send_buffer[message.size() + 2];
+
+            construct_message(send_buffer, message);
+            int connection_socket = establish_connection(portnrfrom, ipAddrfrom);
+
+            if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
+                perror("Unable to send");
+            }
+            else{
+                printf("Message: %s sent successfully", message.c_str());
+            }
+        }
 	}
 	//server command
 	else if (tokens[0].compare("FETCH_MSGS") == 0 && tokens.size() == 3)
