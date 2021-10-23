@@ -530,21 +530,36 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 	else if (tokens[0].compare("SEND_MSG") == 0 && tokens.size() == 5)
 	{
 
-		// some SEND MSG stuff
-		std::cout << "I am a message from SEND_MSG" << std::endl;
-		if (connections.find(tokens[1]) != connections.end())
-		{
-			// found
-			// send the msg content tokens[3]
-			//
-		}
-		else
-		{
-			// not found
-			// cache the message and wait until someone fetches the message
-			std::vector<std::string> message;
-			//messages[tokens[1]] = message.push_back(tokens[4]);
-		}
+        std::cout << "I am a message from SEND_MSG" << std::endl;
+        if ( connections.find(tokens[1]) != connections.end() ) {
+            // found
+            // send the msg content tokens[3]
+            //
+            std::string namefrom = connections[tokens[1]]->name;
+            std::string ipAddrfrom = connections[tokens[1]]->ipaddr;
+            std::string portnrfrom = connections[tokens[1]]->portnr;
+            int sockfrom = connections[tokens[1]]->sock;
+
+            std::string message = tokens[3];
+
+            char send_buffer[message.size() + 2];
+
+            construct_message(send_buffer, message);
+            int connection_socket = establish_connection(portnrfrom, ipAddrfrom);
+
+            if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
+                perror("Unable to send");
+            }
+            else{
+                printf("Message: %s sent succesfully", message.c_str());
+            }
+
+        } else {
+            // not found
+            // cache the message and wait until someone fetches the message
+            std::vector<std::string> message;
+            //messages[tokens[1]] = message.push_back(tokens[4]);
+        }
 	}
 	else if (tokens[0].compare("STATUSREQ") == 0)
 	{
