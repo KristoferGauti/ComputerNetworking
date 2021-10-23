@@ -549,6 +549,38 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 	{
 		// some FETCH MSGS stuff
 		std::cout << "I am a message from FETCH_MSGS" << std::endl;
+
+        // some FETCH MSGS stuff
+        std::cout << "I am a message from FETCH_MSGS" << std::endl;
+
+        // get group number
+        std::string group = tokens[1];
+        std::string namefrom = connections[group]->name;
+        std::string ipAddrfrom = connections[group]->ipaddr;
+        std::string portnrfrom = connections[group]->portnr;
+        int sockfrom = connections[group]->sock;
+
+        if (messages.find(group) != messages.end())
+        {
+            std::vector<std::string> requested_messages = messages[group];
+            for (std::string message : requested_messages)
+            {
+                char send_buffer[message.size() + 2];
+
+                construct_message(send_buffer, message);
+                int connection_socket = establish_connection(portnrfrom, ipAddrfrom);
+
+                if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
+                    perror("Unable to send");
+                }
+                else{
+                    printf("Message: %s sent succesfully", message.c_str());
+                }
+                //store the message in the txt file
+            }
+            requested_messages.clear();
+            messages[group] = {};
+        }
 	}
 	//server command
 	else if (tokens[0].compare("SEND_MSG") == 0 && tokens.size() == 5)
