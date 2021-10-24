@@ -397,7 +397,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         {
             server_msg = from_group.front();
             from_group.erase(from_group.begin());
-            incoming[tokens[1]] = from_group;
         }
         else
         {
@@ -442,7 +441,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                       << std::endl;
 
             outgoing[tokens[1]].push_back(message);
-            //messages[tokens[1]] = message.push_back(tokens[4]);
         }
     }
 
