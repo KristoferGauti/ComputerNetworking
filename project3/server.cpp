@@ -759,11 +759,12 @@ void sendKeepAlive(){
 
     std::this_thread::sleep_for(std::chrono::minutes(2));
     std::this_thread::sleep_for(std::chrono::seconds (30));
+    sleep(120);
 
     while(true){
 
         for(auto const &pair : connected_servers){
-            if(messages.count(pair.second->name) > 0){
+            if(messages.count(pair.second->name) >= 0){
                 std::vector<std::string> storedmessages = messages[pair.second->name];
                 std::string keepalive = "KEEPALIVE," + std::to_string(storedmessages.size());
 
