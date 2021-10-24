@@ -172,6 +172,7 @@ std::string get_local_ip()
  * @return -1 if unable to create the socket for any reason.
  */
 int open_socket(int portno, bool is_server_socket = true)
+
 {
     struct sockaddr_in sk_addr; // address settings for bind()
     int sock;					// socket opened for this port
@@ -221,6 +222,7 @@ int open_socket(int portno, bool is_server_socket = true)
         }
     }
     return sock;
+
 }
 
 int establish_connection(std::string port_nr, std::string ip_addr)
@@ -255,6 +257,7 @@ int establish_connection(std::string port_nr, std::string ip_addr)
  */
 void construct_message(char *send_buffer, std::string message)
 {
+
     char temp_buffer[message.size() + 2];
     strcpy(temp_buffer, message.c_str());
     send_buffer[0] = 0x02;
@@ -305,6 +308,41 @@ void split_commas(std::vector<std::string> *servers_info, std::vector<std::strin
             group_IP_portnr_list->push_back(str);
         }
     }
+
+}
+void server_vector(std::string message, std::vector<std::string> *servers_info)
+{
+	std::stringstream ss(message);
+	int index = 0;
+
+	while (ss.good())
+	{
+		std::string substr;
+		std::getline(ss, substr, ';');
+		if (index == 0)
+		{ //Erasing SERVERS from the first string to get the string: groupId,IP,port
+			substr = substr.erase(0, 9);
+		}
+
+		if (substr.size() != 1)
+		{ //does not append the last line whereas it is an empty string. Don't ask, it works!!!!
+			servers_info->push_back(substr);
+		}
+		index++;
+	}
+}
+
+void split_commas(std::vector<std::string> *servers_info, std::vector<std::string> *group_IP_portnr_list)
+{
+	for (auto server_info : *servers_info)
+	{
+		std::stringstream ss(server_info);
+		std::string str;
+		while (getline(ss, str, ','))
+		{
+			group_IP_portnr_list->push_back(str);
+		}
+	}
 }
 
 /**
@@ -747,6 +785,7 @@ void sendKeepAlive(){
 void sendUpdates(std::string port){
     std::this_thread::sleep_for(std::chrono::minutes(7));
     std::this_thread::sleep_for(std::chrono::seconds (30));
+
 
     while(true){
 
