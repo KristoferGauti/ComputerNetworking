@@ -707,6 +707,20 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     {
         // some STATUSREQ stuff
         std::cout << "I am a message from STATUSREQ" << std::endl;
+
+		std::string response = "STATUSRESP,P3_GROUP_7," + connected_servers[serverSocket]->name + ","; //connected_servers
+		for (auto const &msg_pair : messages) {
+			if (msg_pair.second.size() == 0) {
+				continue;
+			}
+			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ",";			
+		}
+		char send_buffer[response.size() + 2];
+		construct_message(send_buffer, response);
+
+		if (send(serverSocket, send_buffer, response.size()+2, 0) < 0) {
+			perror("Sending STATUSREQ failed!");
+		}
     }
     // Responds with the amount of messages we have for each group that we have reached a message for
     else if (tokens[0].compare("STATUSRESP") == 0)
