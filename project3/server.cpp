@@ -43,6 +43,8 @@
 
 #define BACKLOG 5 // Allowed length of queue of waiting connections
 
+#define MAX_CONNECTIONS 15
+
 /**
  * Simple class for handling connections from clients.
  * Client(int socket) - socket to send/receive traffic from client.
@@ -81,7 +83,7 @@ std::map<int, Client *> connected_servers; //Lookup table for per Servers inform
 std::map<std::string, Client *> stored_servers;
 
 // Incoming messages
-std::map<std::string, std::vector<std::string>> messages;
+std::map<std::string, std::vector<std::string>> incoming;
 
 // Outgoing messages
 std::map<std::string, std::vector<std::string>> outgoing;
@@ -244,10 +246,9 @@ int establish_connection(std::string port_nr, std::string ip_addr)
 
     if (connect(connection_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
-        perror("\nConnection failed");
+        perror("\nConnection failed in establish_connection");
         exit(0);
     }
-    printf("Connection successful!\n");
     return connection_socket;
 }
 
@@ -368,6 +369,11 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
     std::string server_msg;
 
+    for (auto v : tokens)
+    {
+        std::cout << v << std::endl;
+    }
+
     // Return all the servers that we are connected to
     if (tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 1)
     {
@@ -386,12 +392,12 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     // Print the first message that we have stored for that group
     else if (tokens[0].compare("FETCH_MSG") == 0 && tokens.size() == 2)
     {
-        std::vector<std::string> from_group = messages[tokens[1]];
+        std::vector<std::string> from_group = incoming[tokens[1]];
         if (!from_group.empty())
         {
             server_msg = from_group.front();
-            //from_group.erase(from_group.begin());
-            //messages[tokens[1]] = from_group;
+            from_group.erase(from_group.begin());
+            incoming[tokens[1]] = from_group;
         }
         else
         {
@@ -404,8 +410,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
         if (stored_servers.find(tokens[1]) != stored_servers.end())
         {
-            // found
-
             std::string namefrom = stored_servers[tokens[1]]->name;
             std::string ipAddrfrom = stored_servers[tokens[1]]->ipaddr;
             std::string portnrfrom = stored_servers[tokens[1]]->portnr;
@@ -429,16 +433,15 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                 connected_servers[connection_socket]->ipaddr = ipAddrfrom;
                 connected_servers[connection_socket]->portnr = portnrfrom;
 
-                printf("Message: %s sent succesfully", message.c_str());
+                std::cout << "Message sent successfully to " << tokens[1] << std::endl;
             }
         }
         else
         {
-            // not found
-            // cache the message and wait until someone fetches the message
-            std::vector<std::string> message;
-            message.push_back(tokens[2]);
-            messages.insert({tokens[1], message});
+            std::cout << "Server not stored \n"
+                      << std::endl;
+
+            outgoing[tokens[1]].push_back(message);
             //messages[tokens[1]] = message.push_back(tokens[4]);
         }
     }
@@ -505,7 +508,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                         }
 
                         // store the server we just connected to in our connection list
-                        if (ip_address == tokens[1] && port_number == tokens[2])
+                        if ((ip_address == tokens[1] && port_number == tokens[2]))
                         {
                             connected_servers[sockfd] = new Client(sockfd, true);
                             connected_servers[sockfd]->name = group_id;
@@ -553,7 +556,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
     else
     {
-        server_msg = "Unknown command: " + message + "\n" + "COMMANDS:\n" + "  - QUERYSERVERS\n" + "  - FETCH_MSG,<GROUP_ID>\n" + "  - SEND_MSG,<TO GROUP_ID>,<FROM GROUP_ID>,<MESSAGE>\n" + " - CONNECT,<ip address>,<port number>\n" + " - STORED SERVERS";
+        server_msg = "Unknown command: " + message + "\n" + "COMMANDS:\n" + "  - QUERYSERVERS\n" + "  - FETCH_MSG,<GROUP_ID>\n" + "  - SEND_MSG,<TO GROUP_ID>,<FROM GROUP_ID>,<MESSAGE>\n" + "  - CONNECT,<ip address>,<port number>\n" + "  - STORED SERVERS";
     }
 
     char send_buffer[server_msg.size() + 2];
@@ -666,13 +669,13 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         int sockto = stored_servers[group]->sock;
 
         // check if messages contains this group as key
-        if (messages.find(group) != messages.end())
+        if (incoming.find(group) != incoming.end())
         {
             // is so create a new vector
             //std::vector<std::string> requested_messages = messages[group];
             std::string message;
             // go through each message in messages and append it to the message string
-            for (auto const &data : messages[group])
+            for (auto const &data : incoming[group])
             {
                 message += ',' + data;
             }
@@ -694,8 +697,8 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             //store the message in the txt file
 
             // delete this group id messages as we have sent them to the one who requested them
-            messages[group].clear();
-            messages[group] = {};
+            incoming[group].clear();
+            incoming[group] = {};
         }
     }
     //server command
@@ -740,7 +743,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             std::vector<std::string> storedMessage;
             storedMessage.push_back(message);
 
-            messages.insert({nameto, storedMessage});
+            incoming.insert({nameto, storedMessage});
             //messages[tokens[1]] = message.push_back(tokens[4]);
         }
     }
@@ -774,9 +777,9 @@ void sendKeepAlive()
 
         for (auto const &pair : connected_servers)
         {
-            if (messages.count(pair.second->name) > 0)
+            if (incoming.count(pair.second->name) > 0)
             {
-                std::vector<std::string> storedmessages = messages[pair.second->name];
+                std::vector<std::string> storedmessages = incoming[pair.second->name];
                 std::string keepalive = "KEEPALIVE," + std::to_string(storedmessages.size());
 
                 char send_buffer[keepalive.size() + 2];
