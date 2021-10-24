@@ -785,12 +785,13 @@ void sendKeepAlive(){
 void sendUpdates(std::string port){
     std::this_thread::sleep_for(std::chrono::minutes(7));
     std::this_thread::sleep_for(std::chrono::seconds (30));
+    sleep(450);
 
 
     while(true){
 
         for(auto const &pair : stored_servers){
-            std::string query = "QUERYSERVERS," + get_local_ip() + ',' +port;
+            std::string query = "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' + port;
 
             char send_buffer[query.size()+2];
 
@@ -882,7 +883,6 @@ int main(int argc, char *argv[])
 
                 // create a new client to store information.
                 clients[serverSock] = new Client(serverSock, true);
-                clients[serverSock]->name = "Client[" + std::to_string(serverSock) + "]";
 
                 // Decrement the number of sockets waiting to be dealt with
                 n--;
