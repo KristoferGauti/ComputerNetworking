@@ -297,40 +297,6 @@ void server_vector(std::string message, std::vector<std::string> *servers_info)
  * Split the tokenized command that we get and insert the port nr into a separate vector
  */
 
-void split_commas(std::vector<std::string> *servers_info, std::vector<std::string> *group_IP_portnr_list)
-{
-    for (auto server_info : *servers_info)
-    {
-        std::stringstream ss(server_info);
-        std::string str;
-        while (getline(ss, str, ','))
-        {
-            group_IP_portnr_list->push_back(str);
-        }
-    }
-
-}
-void server_vector(std::string message, std::vector<std::string> *servers_info)
-{
-	std::stringstream ss(message);
-	int index = 0;
-
-	while (ss.good())
-	{
-		std::string substr;
-		std::getline(ss, substr, ';');
-		if (index == 0)
-		{ //Erasing SERVERS from the first string to get the string: groupId,IP,port
-			substr = substr.erase(0, 9);
-		}
-
-		if (substr.size() != 1)
-		{ //does not append the last line whereas it is an empty string. Don't ask, it works!!!!
-			servers_info->push_back(substr);
-		}
-		index++;
-	}
-}
 
 void split_commas(std::vector<std::string> *servers_info, std::vector<std::string> *group_IP_portnr_list)
 {
@@ -679,9 +645,9 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
+            //int connection_socket = establish_connection(portnrto, ipAddrto);
 
-            if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
+            if(send(serverSocket, send_buffer, message.size()+2, 0) < 0){
                 perror("Unable to send");
             }
             else{
@@ -759,7 +725,7 @@ void sendKeepAlive(){
 
     //std::this_thread::sleep_for(std::chrono::minutes(2));
     //std::this_thread::sleep_for(std::chrono::seconds (30));
-    sleep(120);
+    sleep(10);
 
     while(true){
 
@@ -767,6 +733,7 @@ void sendKeepAlive(){
             if(messages.count(pair.second->name) >= 0){
                 std::vector<std::string> storedmessages = messages[pair.second->name];
                 std::string keepalive = "KEEPALIVE," + std::to_string(storedmessages.size());
+                std::cout << "Inside KeepAlive" << '\n';
 
                 char send_buffer[keepalive.size()+2];
 
@@ -786,7 +753,7 @@ void sendKeepAlive(){
 void sendUpdates(std::string port){
     //std::this_thread::sleep_for(std::chrono::minutes(7));
     //std::this_thread::sleep_for(std::chrono::seconds (30));
-    sleep(450);
+    sleep(10);
 
 
     while(true){
@@ -802,7 +769,7 @@ void sendUpdates(std::string port){
             {
                 perror("Sending message failed");
             }
-            std::cout << "QUERYSERVERS," + get_local_ip() + ',' +port << std::endl;
+            std::cout << "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' +port << std::endl;
 
         }
     }
@@ -850,6 +817,7 @@ int main(int argc, char *argv[])
     std::thread keepAlive_thread(sendKeepAlive);
     std::string port = std::string(argv[1]);
     std::thread updates_thread(sendUpdates, std::ref(port));
+
 
     while (!finished)
     {
@@ -950,4 +918,6 @@ int main(int argc, char *argv[])
             }
         }
     }
+    keepAlive_thread.join();
+    updates_thread.join();
 }
