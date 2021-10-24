@@ -77,10 +77,10 @@ std::map<int, Client *> connected_servers;
 
 std::map<std::string, Client *> connections;
 
-// Incoming messages
+// Incoming messages are the messages for our server
 std::map<std::string, std::vector<std::string>> messages;
 
-// Outgoing messages
+// Outgoing messages are the messages for the other servers to FETCH
 std::map<std::string, std::vector<std::string>> outgoing;
 
 bool valid_message(char *buffer)
@@ -580,7 +580,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
+            int connection_socket = establish_connection(portnrto, ipAddrto); //serverSocket???????/
 
             if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
                 perror("Unable to send");
@@ -643,57 +643,53 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 		// some STATUSREQ stuff
 		std::cout << "I am a message from STATUSREQ" << std::endl;
 
-		std::string response = "STATUSRESP,P3_GROUP_7," + connected_servers[serverSocket]->name; //connected_servers
+		std::string response = "STATUSRESP,P3_GROUP_7," + connected_servers[serverSocket]->name + ","; //connected_servers
 		for (auto const &msg_pair : messages) {
 			if (msg_pair.second.size() == 0) {
 				continue;
 			}
-			response += msg_pair.first + std::to_string(msg_pair.second.size());			
+			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ",";			
 		}
 		char send_buffer[response.size() + 2];
 		construct_message(send_buffer, response);
 
 		if (send(serverSocket, send_buffer, response.size()+2, 0) < 0) {
-			perror("Sending STATUSRESP failed!");
+			perror("Sending STATUSREQ failed!");
 		}
 	}
 
+	//STATUSRESP,FROM GROUP,TO GROUP,<group, msgs held>      "P3_GROUP_7,5"    eg er ad svara response-i
 	else if (tokens[0].compare("STATUSRESP") == 0)
 	{
 		// some STATUSRESP stuff
 		std::cout << "I am a message from STATUSRESP" << std::endl;
 
-		std::string response = "STATUSRESP,P3_GROUP_7," + connected_servers[serverSocket]->name; //connected_servers
-		for (auto const &msg_pair : messages) {
-			if (msg_pair.second.size() == 0) {
-				continue;
-			}
-			response += msg_pair.first + std::to_string(msg_pair.second.size());			
-		}
-		char send_buffer[response.size() + 2];
-		construct_message(send_buffer, response);
+		std::string response = "STATUSRESP," + tokens[1] + "," + connected_servers[serverSocket]->name + ",";
 
-		if (send(serverSocket, send_buffer, response.size()+2, 0) < 0) {
-			perror("Sending STATUSRESP failed!");
-		}
+		std::vector<std::string> parameter_msg_vector;
 
-		char receive_buffer[CHUNK_SIZE];
-
-		while (true)
+		std::stringstream ss(tokens[3]);
+		std::string str;
+		while (getline(ss, str, ','))
 		{
-			memset(receive_buffer, 0, CHUNK_SIZE);
-			if (recv(serverSocket, receive_buffer, CHUNK_SIZE, 0) < 0)
-			{
-				perror("Message was not received!");
-				break;
-			}
-			else
-			{
-				char newBuffer[strlen(receive_buffer)+2];
-				parse_message(receive_buffer, newBuffer);
-
-			}
+			parameter_msg_vector.push_back(str);
 		}
+
+		for (int i = 0; i < parameter_msg_vector.size(); i++) {
+			if (i % 2 == 0) {
+				if (parameter_msg_vector[i] == "P3_GROUP_7") {
+					//FETCHMSGS
+				}
+				//else ignore
+			}
+			response += ",";			
+		}
+
+		//construct message
+		// if (send(serverSocket, send_buffer, response.size()+2, 0) < 0) {
+		// 	perror("Sending STATUSREQ failed!");
+		// }
+
 	}
 }
 
