@@ -82,10 +82,10 @@ std::map<int, Client *> connected_servers; //Lookup table for per Servers inform
 
 std::map<std::string, Client *> stored_servers;
 
-// Incoming messages
+// Incoming messages are the messages for our server
 std::map<std::string, std::vector<std::string>> incoming;
 
-// Outgoing messages
+// Outgoing messages are the messages for the other servers to FETCH
 std::map<std::string, std::vector<std::string>> outgoing;
 
 /*
@@ -369,10 +369,10 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
     std::string server_msg;
 
-    for (auto v : tokens)
-    {
-        std::cout << v << std::endl;
-    }
+    // for (auto v : tokens)
+    // {
+    //     std::cout << v << std::endl;
+    // }
 
     // Return all the servers that we are connected to
     if (tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 1)
@@ -681,9 +681,8 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
-
-            if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
+            
+            if (send(serverSocket, send_buffer, message.size() + 2, 0) < 0)
             {
                 perror("Unable to send");
             }
@@ -750,6 +749,20 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     {
         // some STATUSREQ stuff
         std::cout << "I am a message from STATUSREQ" << std::endl;
+
+		std::string response = "STATUSRESP,P3_GROUP_7," + connected_servers[serverSocket]->name + ","; //connected_servers
+		for (auto const &msg_pair : incoming) {
+			if (msg_pair.second.size() == 0) {
+				continue;
+			}
+			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ",";			
+		}
+		char send_buffer[response.size() + 2];
+		construct_message(send_buffer, response);
+
+		if (send(serverSocket, send_buffer, response.size()+2, 0) < 0) {
+			perror("Sending STATUSREQ failed!");
+		}
     }
     // Responds with the amount of messages we have for each group that we have reached a message for
     else if (tokens[0].compare("STATUSRESP") == 0)
