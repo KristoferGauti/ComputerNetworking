@@ -401,17 +401,14 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     // Sends the message that the client sent to the group
     else if (tokens[0].compare("SEND_MSG") == 0 && tokens.size() == 4)
     {
-        // some SEND MSG stuff
-        std::cout << "I am a message from SEND_MSG" << std::endl;
+
         if (stored_servers.find(tokens[1]) != stored_servers.end())
         {
             // found
-            // send the msg content tokens[3]
-            //
+
             std::string namefrom = stored_servers[tokens[1]]->name;
             std::string ipAddrfrom = stored_servers[tokens[1]]->ipaddr;
             std::string portnrfrom = stored_servers[tokens[1]]->portnr;
-            int sockfrom = stored_servers[tokens[1]]->sock;
 
             std::string message = tokens[3];
 
@@ -420,18 +417,18 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             construct_message(send_buffer, message);
             int connection_socket = establish_connection(portnrfrom, ipAddrfrom);
 
-            // Store the connection into the connected_servers
-            connected_servers[connection_socket] = new Client(connection_socket, true);
-            connected_servers[connection_socket]->name = namefrom;
-            connected_servers[connection_socket]->ipaddr = ipAddrfrom;
-            connected_servers[connection_socket]->portnr = portnrfrom;
-
             if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
             {
                 perror("Unable to send");
             }
             else
             {
+                // Store the connection into the connected_servers
+                connected_servers[connection_socket] = new Client(connection_socket, true);
+                connected_servers[connection_socket]->name = namefrom;
+                connected_servers[connection_socket]->ipaddr = ipAddrfrom;
+                connected_servers[connection_socket]->portnr = portnrfrom;
+
                 printf("Message: %s sent succesfully", message.c_str());
             }
         }
