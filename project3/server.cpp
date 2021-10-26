@@ -504,10 +504,12 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
     if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 2)
     {
+        std::cout << "WTF" << std::endl;
         server_msg = "SERVERS,P3_GROUP_7," + get_local_ip() + ',' + src_port + ';';
 
         for (auto const &pair : servers)
         {
+            std::cout << "WTF2" << std::endl;
             Client *client = pair.second;
             server_msg += client->name + ',' + client->ipaddr + ',' + client->portnr + ';';
         }
