@@ -288,7 +288,7 @@ int establish_connection(std::string port_nr, std::string ip_addr, fd_set *openS
     printf("Server - accept***\n");
     // Add new client to the list of open sockets
     FD_SET(serverSocket, openSockets);
-
+    servers[serverSocket] = new Client(serverSocket, true);
     // And update the maximum file descriptor
     *maxfds = std::max(*maxfds, serverSocket);
 
