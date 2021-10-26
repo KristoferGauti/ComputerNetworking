@@ -483,13 +483,13 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     {
 
         int connection_socket = establish_connection(tokens[2], tokens[1]);
-        servers[connection_socket] = new Client(connection_socket, true);
-        servers[connection_socket]->name = "P3_GROUP_6";
-        servers[connection_socket]->portnr = tokens[2];
-        servers[connection_socket]->ipaddr = tokens[1];
-        FD_SET(connection_socket, openSockets);
-        *maxfds = std::max(*maxfds, connection_socket);
-        send_queryservers(connection_socket);
+        servers[clientSocket] = new Client(clientSocket, true);
+        servers[clientSocket]->name = "P3_GROUP_6";
+        servers[clientSocket]->portnr = tokens[2];
+        servers[clientSocket]->ipaddr = tokens[1];
+        FD_SET(clientSocket, openSockets);
+        *maxfds = std::max(*maxfds, clientSocket);
+        send_queryservers(clientSocket);
         server_msg = "Sucessfully sent QUERYSERVERS";
     }
     else if (tokens[0].compare("STORED") == 0 && tokens.size() == 1)
