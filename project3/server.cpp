@@ -455,7 +455,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     {
         server_msg = "SERVERS,P3_GROUP_7," + get_local_ip() + "," + src_port + ";";
 
-        for (auto const &pair : clients)
+        for (auto const &pair : servers)
         {
             Client *client = pair.second;
             server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ';';
