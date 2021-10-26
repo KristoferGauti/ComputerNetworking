@@ -424,6 +424,8 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
         int connection_socket = establish_connection(tokens[2], tokens[1]);
         servers[connection_socket] = new Client(connection_socket, true);
+        servers[connection_socket]->ipaddr = tokens[1];
+        servers[connection_socket]->portnr = tokens[2];
         FD_SET(connection_socket, openSockets);
         *maxfds = std::max(*maxfds, connection_socket);
         send_queryservers(connection_socket);
@@ -529,38 +531,30 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             std::string ip_address = group_IP_portnr_list[i + 1];
             std::string port_number = group_IP_portnr_list[i + 2];
 
-            if (std::isdigit(port_number[0]))
+            int sockfd = open_socket(stoi(port_number), false);
+
+            std::cout << "Name: " << group_id << std::endl;
+            if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && port_number.size() == 4)
             {
 
-                int sockfd = open_socket(stoi(port_number), false);
-
-                std::cout << "Name: " << group_id << std::endl;
-                if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && port_number.size() == 4)
+                if (i == 0)
                 {
-
-                    if (i == 0)
+                    servers[serverSocket]->name = group_id;
+                    servers[serverSocket]->ipaddr = ip_address;
+                    servers[serverSocket]->portnr = port_number;
+                }
+                else
+                {
+                    if (!isStored(group_id, stored_names))
                     {
-                        servers[serverSocket]->name = group_id;
-                        servers[serverSocket]->ipaddr = ip_address;
-                        servers[serverSocket]->portnr = port_number;
-                    }
-                    else
-                    {
-                        if (!isStored(group_id, stored_names))
-                        {
-                            stored_servers[sockfd] = new Client(sockfd, true);
-                            stored_servers[sockfd]->name = group_id;
-                            stored_servers[sockfd]->ipaddr = ip_address;
-                            stored_servers[sockfd]->portnr = port_number;
+                        stored_servers[sockfd] = new Client(sockfd, true);
+                        stored_servers[sockfd]->name = group_id;
+                        stored_servers[sockfd]->ipaddr = ip_address;
+                        stored_servers[sockfd]->portnr = port_number;
 
-                            stored_names.push_back(group_id);
-                        }
+                        stored_names.push_back(group_id);
                     }
                 }
-            }
-            else
-            {
-                std::cout << "This is not a number: " << port_number << std::endl;
             }
         }
     }
