@@ -589,7 +589,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         tokens.push_back(token);
     }
 
-    std::string server_msg = "";
+    std::string server_msg;
 
     if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 2)
     {
