@@ -237,7 +237,8 @@ int establish_connection(std::string port_nr, std::string ip_addr)
         perror("\nConnection failed");
         exit(0);
     }
-    printf("Connection successful!\n");
+
+    std::cout << "CONNECTED TO SERVER ON IP: " + ip_addr + ", PORT: " + port_nr << std::endl;
     return connection_socket;
 }
 
@@ -291,16 +292,12 @@ void split_commas(std::vector<std::string> *servers_info, std::vector<std::strin
 
 void send_queryservers(int connection_socket, std::string src_port)
 { // we want the response to go to the server port
-    std::string message = "QUERYSERVERS,P3_GROUP_7," + get_local_ip() + "," + std::to_string(stoi(src_port) - 1);
+    std::string message = "QUERYSERVERS,P3_GROUP_7";
     char sendBuffer[message.size() + 2];
     construct_message(sendBuffer, message);
     if (send(connection_socket, sendBuffer, message.length() + 2, 0) < 0)
     {
         perror("Sending message failed");
-    }
-    else
-    {
-        unknown[connection_socket] = new Client(connection_socket, true);
     }
 }
 
@@ -336,6 +333,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     message.erase(0, 1);
     message.erase(message.size() - 1);
 
+    std::cout << "In client command" << std::endl;
     std::vector<std::string> tokens;
     std::string token;
     std::stringstream ss(message);
@@ -350,7 +348,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
     if (tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 1)
     {
-        for (auto const &pair : connections)
+        for (auto const &pair : servers)
         {
             Client *client = pair.second;
             server_msg += client->name + ",";
@@ -387,7 +385,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         int connection_socket = establish_connection(tokens[2], tokens[1]);
         servers[connection_socket] = new Client(connection_socket, true);
 
-        send_queryservers(connection_socket, src_port);
+        send_queryservers(connection_socket, std::to_string(5000));
     }
     else
     {
@@ -406,6 +404,8 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     message.erase(0, 1);
     message.erase(message.size() - 1);
 
+    std::cout << "In client command: " << message << std::endl;
+
     std::vector<std::string> tokens;
     std::string token;
     std::stringstream ss(message);
@@ -423,7 +423,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         server_msg = "SERVERS,";
         // store information about client
         servers[serverSocket] = clients[serverSocket];
-        clients.erase(serverSocket);
 
         servers[serverSocket]->name = tokens[1];
         servers[serverSocket]->ipaddr = tokens[2];
@@ -443,12 +442,14 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         {
             perror("Sending message failed");
         }
-
-        send(serverSocket, sendBuffer, server_msg.length() + 2, 0);
     }
 
     else if (tokens[0].compare("SERVERS") == 0)
     {
+        for (auto v : tokens)
+        {
+            std::cout << v << std::endl;
+        }
     }
 
     else if (tokens[0].compare("LEAVE") == 0)
