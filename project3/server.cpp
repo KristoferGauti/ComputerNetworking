@@ -359,6 +359,17 @@ bool isStored(std::string id, std::vector<std::string> stored_names)
 
 void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
 {
+
+    if (!valid_message(buffer))
+    {
+        std::string server_msg = "You are nothing but a scam";
+        char send_buffer[server_msg.size() + 2];
+        construct_message(send_buffer, server_msg);
+        send(clientSocket, send_buffer, server_msg.size() + 2, 0);
+        std::cout << "NOT A VALID MESSAGE" << std::endl;
+        return;
+    }
+
     std::string message = std::string(buffer);
     message.erase(0, 1);
     message.erase(message.size() - 1);
@@ -464,7 +475,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 // Process command from client on the server
 void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
 {
-
     std::string server_msg = "";
 
     if (!valid_message(buffer))
@@ -525,7 +535,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             int sockfd = open_socket(stoi(port_number), false);
 
             std::cout << "Name: " << group_id << std::endl;
-            if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && port_number.size() == 4)
+            if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && (group_id.substr(0, 3) == "P3_" || group_id.substr(0, 3) == "Ins") && port_number.size() == 4)
             {
 
                 if (i == 0)
@@ -842,7 +852,7 @@ int main(int argc, char *argv[])
                 maxfds = std::max(maxfds, serverSock);
 
                 // create a new client to store information.
-                clients[serverSock] = new Client(serverSock, true);
+                servers[serverSock] = new Client(serverSock, true);
 
                 // Decrement the number of sockets waiting to be dealt with
                 n--;
