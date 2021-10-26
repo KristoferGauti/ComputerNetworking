@@ -559,6 +559,11 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
                         stored_servers[sockfd]->ipaddr = ip_address;
                         stored_servers[sockfd]->portnr = port_number;
 
+                        connections[group_id] = new Client(sockfd, true);
+                        connections[group_id]->name = group_id;
+                        connections[group_id]->ipaddr = ip_address;
+                        connections[group_id]->portnr = port_number;
+
                         stored_names.push_back(group_id);
                     }
                 }
@@ -582,18 +587,13 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         // check if the message that we got from another server has any message for us
         if (count > 0)
         {
-            // initialize variables so that we can send FETCH_MSGS to the server that sent to us a KEEPALIVE message
-            std::string nameto = clients[serverSocket]->name;
-            std::string ipAddrto = clients[serverSocket]->ipaddr;
-            std::string portnrto = clients[serverSocket]->portnr;
+
             // initialize the message variable with a global variable that has the value "P3_GROUP_7"
-            std::string message = std::string("FETCH_MSGS,") + std::string(GROUP);
+            std::string message = "FETCH_MSGS,P3_GROUP_7";
             char send_buffer[message.size() + 2];
-
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
 
-            if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
+            if (send(serverSocket, send_buffer, message.size() + 2, 0) < 0)
             {
                 perror("Unable to send");
             }
@@ -611,10 +611,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
         // get group number
         std::string group = tokens[1];
-        // find the relevant group from connections using the given group id
-        std::string nameto = connections[group]->name;
-        std::string ipAddrto = connections[group]->ipaddr;
-        std::string portnrto = connections[group]->portnr;
 
         // check if messages contains this group as key
         if (messages.find(group) != messages.end())
@@ -625,15 +621,16 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             // go through each message in messages and append it to the message string
             for (auto const &data : messages[group])
             {
-                message += ',' + data;
+                message += data + ',';
             }
+
+            message.pop_back();
             // create a char array with the size of the message + STX and ETX
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
 
-            if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
+            if (send(serverSocket, send_buffer, message.size() + 2, 0) < 0)
             {
                 perror("Unable to send");
             }
@@ -654,23 +651,23 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
         std::cout << "I am a message from SEND_MSG" << std::endl;
         // initialize variables so that we can send the message that the one server has for the other or if we don't have it stored, caching it
-        std::string nameto = connections[tokens[1]]->name;
-        std::string ipAddrto = connections[tokens[1]]->ipaddr;
-        std::string portnrto = connections[tokens[1]]->portnr;
-
-        // the message that we received
-        std::string message = tokens[3];
 
         // check if we are connected or have their information stored in connection map
         if (connections.find(tokens[1]) != connections.end())
         {
 
+            std::string nameto = connections[tokens[1]]->name;
+            std::string ipAddrto = connections[tokens[1]]->ipaddr;
+            std::string portnrto = connections[tokens[1]]->portnr;
+            int socket = connections[tokens[1]]->sock;
+
+            // the message that we received
+            std::string message = tokens[3];
+
             char send_buffer[message.size() + 2];
-
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
 
-            if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
+            if (send(socket, send_buffer, message.size() + 2, 0) < 0)
             {
                 perror("Unable to send");
             }
@@ -686,7 +683,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             std::vector<std::string> storedMessage;
             storedMessage.push_back(message);
 
-            messages.insert({nameto, storedMessage});
+            messages.insert({tokens[1], storedMessage});
             //messages[tokens[1]] = message.push_back(tokens[4]);
         }
     }
@@ -777,7 +774,6 @@ void sendKeepAlive()
 
                 char send_buffer[keepalive.size() + 2];
                 construct_message(send_buffer, keepalive);
-                std::cout << "Sending KEEPALIVE to " << servers[pair.second->sock]->name << std::endl;
                 if (send(pair.second->sock, send_buffer, keepalive.length() + 2, 0) < 0)
                 {
                     perror("Sending message failed");
