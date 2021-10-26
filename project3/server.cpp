@@ -30,7 +30,6 @@
 #include <ifaddrs.h>
 #include <sys/select.h>
 
-
 //Global variables
 #define CHUNK_SIZE 512
 #define GROUP "P3_GROUP_7"
@@ -92,7 +91,6 @@ std::map<std::string, std::vector<std::string>> messages;
 
 // Outgoing messages
 std::map<std::string, std::vector<std::string>> outgoing;
-
 
 bool valid_message(char *buffer)
 {
@@ -303,7 +301,6 @@ void server_vector(std::string message, std::vector<std::string> *servers_info)
         if (index == 0)
         { //Erasing SERVERS from the first string to get the string: groupId,IP,port
             substr = substr.erase(0, 8);
-
         }
 
         if (substr.size() != 1)
@@ -328,19 +325,6 @@ void split_commas(std::vector<std::string> *servers_info, std::vector<std::strin
             group_IP_portnr_list->push_back(str);
         }
     }
-}
-
-void send_queryservers(int connection_socket, std::string src_port)
-{ // we want the response to go to the server port
-    std::string message = "QUERYSERVERS,P3_GROUP_7";
-    char sendBuffer[message.size() + 2];
-    construct_message(sendBuffer, message);
-    if (send(connection_socket, sendBuffer, message.length() + 2, 0) < 0)
-    {
-        perror("Sending message failed");
-        return;
-    }
-
 }
 
 /**
@@ -369,7 +353,6 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
     FD_CLR(clientSocket, openSockets);
 }
 
-
 bool isStored(std::string id, std::vector<std::string> stored_names)
 {
     bool stored = false;
@@ -382,7 +365,6 @@ bool isStored(std::string id, std::vector<std::string> stored_names)
         }
     }
     return stored;
-
 }
 
 void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
@@ -394,7 +376,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     std::vector<std::string> tokens;
     std::string token;
     std::stringstream ss(message);
-
 
     while (ss.good())
     {
@@ -428,7 +409,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             server_msg = from_group.front();
             from_group.erase(from_group.begin());
             messages[tokens[1]] = from_group;
-
         }
         else
         {
@@ -439,20 +419,12 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     {
         outgoing[tokens[1]].push_back(tokens[2]);
         server_msg = "Message sent";
-
     }
 
     else if (tokens[0].compare("CONNECT") == 0 && tokens.size() == 3)
     {
 
-        int connection_socket = establish_connection(tokens[2], tokens[1]);
-        servers[connection_socket] = new Client(connection_socket, true);
-
-        FD_SET(connection_socket, openSockets);
-        *maxfds = std::max(*maxfds, connection_socket);
-
-        send_queryservers(connection_socket, std::to_string(5000));
-        server_msg = "Sucessfully sent QUERYSERVERS";
+        std::cout << "I do not know what to do :(" << std::endl;
     }
     else if (tokens[0].compare("STORED") == 0 && tokens.size() == 1)
 
@@ -471,7 +443,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     else
     {
         server_msg = "Unknown command: " + message + "\n" + "COMMANDS:\n" + "  - QUERYSERVERS\n" + "  - FETCH_MSG,<GROUP_ID>\n" + "  - SEND_MSG,<GROUP_ID>,<MESSAGE>";
-
     }
 
     char send_buffer[server_msg.size() + 2];
@@ -745,7 +716,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     char send_buffer[server_msg.size() + 2];
     construct_message(send_buffer, server_msg);
     send(serverSocket, send_buffer, server_msg.size() + 2, 0);
-
 }
 
 int main(int argc, char *argv[])
@@ -930,7 +900,6 @@ int main(int argc, char *argv[])
                     // Remove client from the clients list
                     for (auto const &c : disconnectedClients)
                         clients.erase(c->sock);
-
                 }
             }
         }
