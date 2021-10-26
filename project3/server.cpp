@@ -530,7 +530,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
                 if (i == 0)
                 {
-                    servers[serverSocket] = new Client(sockfd, true);
                     servers[serverSocket]->name = group_id;
                     servers[serverSocket]->ipaddr = ip_address;
                     servers[serverSocket]->portnr = port_number;
