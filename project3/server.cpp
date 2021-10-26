@@ -532,19 +532,16 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             std::string ip_address = group_IP_portnr_list[i + 1];
             std::string port_number = group_IP_portnr_list[i + 2];
 
-            std::cout << 1 << std::endl;
             int sockfd = open_socket(stoi(port_number), false);
-            std::cout << 2 << std::endl;
             std::cout << "Name: " << group_id << std::endl;
             if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && (group_id.substr(0, 3) == "P3_" || group_id.substr(0, 3) == "Ins") && port_number.size() == 4)
             {
-                std::cout << 3 << std::endl;
                 if (i == 0)
                 {
-                    servers[sockfd] = new Client(sockfd, true);
-                    servers[sockfd]->name = group_id;
-                    servers[sockfd]->ipaddr = ip_address;
-                    servers[sockfd]->portnr = port_number;
+                    servers[serverSocket] = new Client(sockfd, true);
+                    servers[serverSocket]->name = group_id;
+                    servers[serverSocket]->ipaddr = ip_address;
+                    servers[serverSocket]->portnr = port_number;
                 }
                 else
                 {
