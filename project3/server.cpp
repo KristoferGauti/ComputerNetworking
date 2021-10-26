@@ -907,41 +907,32 @@ int main(int argc, char *argv[])
     }
 
     serverPort = atoi(argv[1]);
+    clientPort = serverPort + 1;
 
     // Setup socket for server to listen to
     server_listen_sock = open_socket(atoi(argv[1]), true);
+    client_listen_sock = open_socket(atoi(argv[1] + 1), true);
+
     printf("Server listening on port: %d\n", serverPort);
 
     if (listen(server_listen_sock, BACKLOG) < 0)
-
     {
-        printf("Listen failed on port %s\n", argv[1]);
+        printf("Listen failed on client port %s\n", (argv[1]));
+        exit(0);
+    }
+    else if (listen(client_listen_sock, BACKLOG) < 0)
+    {
+        printf("Listen failed on server port %s\n", ((argv[1]) + 1));
         exit(0);
     }
     else
-    {
         // Add listen socket to socket set we are monitoring
-        // Enables the server_listen_sock to enter "loops" where it listens for events
+    {
+        FD_ZERO(&openSockets);
         FD_SET(server_listen_sock, &openSockets);
-    }
-
-    clientPort = serverPort + 1;
-
-    client_listen_sock = open_socket(atoi(argv[1]) + 1, true);
-    printf("Client listening on port: %d\n", clientPort);
-
-    if (listen(client_listen_sock, BACKLOG) < 0)
-    {
-        printf("Listen failed on port %s\n", argv[1]);
-        exit(0);
-    }
-    else
-    {
-        // Add listen socket to socket set we are monitoring
-        // Enables the server_listen_sock to enter "loops" where it listens for events
         FD_SET(client_listen_sock, &openSockets);
+        maxfds = std::max(server_listen_sock, client_listen_sock);
     }
-    maxfds = std::max(server_listen_sock, client_listen_sock);
     finished = false;
 
     std::thread keepAlive(sendKeepAlive);
