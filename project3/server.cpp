@@ -449,7 +449,10 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         for (auto const &pair : servers)
         {
             Client *client = pair.second;
-            server_msg += client->name + ",";
+            if (!client->name.empty())
+            {
+                server_msg += client->name + ",";
+            }
         }
 
         server_msg.pop_back();
@@ -748,8 +751,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     else if ((tokens[0].compare("FETCH_MSG") == 0) && tokens.size() == 4)
     {
     }
-
-    std::cout << "Message: " << server_msg << std::endl;
 
     char send_buffer[server_msg.size() + 2];
     construct_message(send_buffer, server_msg);
