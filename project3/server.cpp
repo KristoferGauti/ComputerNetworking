@@ -663,12 +663,53 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     else if (tokens[0].compare("STATUSREQ") == 0)
     {
         // some STATUSREQ stuff
-        std::cout << "I am a message from STATUSREQ" << std::endl;
+		std::cout << "I am a message from STATUSREQ" << std::endl;
+
+		std::string response = "STATUSRESP,P3_GROUP_7," + servers[serverSocket]->name + ",";
+		for (auto const &msg_pair : messages) {
+			if (msg_pair.second.size() == 0) {
+				continue;
+			}
+			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ",";			
+		}
+		char send_buffer[response.size() + 2];
+
+        if (!response.empty()) {
+            response.pop_back();
+        }
+
+		construct_message(send_buffer, response);
+
+		if (send(serverSocket, send_buffer, response.size()+2, 0) < 0) {
+			perror("Sending STATUSREQ failed!");
+		}
     }
+
     else if (tokens[0].compare("STATUSRESP") == 0)
     {
         // some STATUSRESP stuff
         std::cout << "I am a message from STATUSRESP" << std::endl;
+
+        std::string response = "STATUSRESP,P3_GROUP_7," + servers[serverSocket]->name + ",";
+
+        for (auto const &msg_pair : messages) {
+			if (msg_pair.second.size() == 0) {
+				continue;
+			}
+			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ",";			
+		}
+		char send_buffer[response.size() + 2];
+
+        if (!response.empty()) {
+            response.pop_back();
+        }
+
+		construct_message(send_buffer, response);
+
+		if (send(serverSocket, send_buffer, response.size()+2, 0) < 0) {
+			perror("Sending STATUSRESP failed!");
+		}
+
     }
     //client command
     else if ((tokens[0].compare("SEND_MSG") == 0) && tokens.size() == 4)
