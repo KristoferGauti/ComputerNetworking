@@ -516,7 +516,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
     else if (tokens[0].compare("SERVERS") == 0)
     {
-        std::cout << "RESPONDING TO: " << message << std::endl;
 
         std::vector<std::string> servers_info;
 
@@ -534,7 +533,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
             int sockfd = open_socket(stoi(port_number), false);
 
-            std::cout << "Name: " << group_id << std::endl;
             if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && port_number.size() == 4)
             {
 
