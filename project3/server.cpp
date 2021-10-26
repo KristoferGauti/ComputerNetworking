@@ -327,18 +327,6 @@ void split_commas(std::vector<std::string> *servers_info, std::vector<std::strin
     }
 }
 
-void send_queryservers(int connection_socket, std::string src_port)
-{ // we want the response to go to the server port
-    std::string message = "QUERYSERVERS,P3_GROUP_7";
-    char sendBuffer[message.size() + 2];
-    construct_message(sendBuffer, message);
-    if (send(connection_socket, sendBuffer, message.length() + 2, 0) < 0)
-    {
-        perror("Sending message failed");
-        return;
-    }
-}
-
 /**
  * Close a client's connection, remove it from the client list, and
  * tidy up select sockets afterwards.
