@@ -426,7 +426,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     {
 
         int connection_socket = establish_connection(tokens[2], tokens[1]);
-        servers[connection_socket] = new Client(connection_socket, true);
         FD_SET(connection_socket, openSockets);
         *maxfds = std::max(*maxfds, connection_socket);
         send_queryservers(connection_socket);
@@ -506,6 +505,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     {
 
         server_msg = "SERVERS,P3_GROUP_7," + get_local_ip() + ',' + src_port + ';';
+        std::cout << "Entered queryservers" << std::endl;
         for (auto const &pair : servers)
         {
             Client *client = pair.second;
@@ -751,6 +751,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     {
     }
 
+    std::cout << "Entered SEND" << std::endl;
     char send_buffer[server_msg.size() + 2];
     construct_message(send_buffer, server_msg);
     send(serverSocket, send_buffer, server_msg.size() + 2, 0);
