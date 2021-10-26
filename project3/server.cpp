@@ -417,6 +417,8 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
         {
             Client *client = pair.second;
+            std::cout << client->name <<  client->ipaddr << client->portnr << std::endl;
+
             server_msg += client->name + ",";
         }
         server_msg.pop_back();
@@ -452,6 +454,9 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
         int connection_socket = establish_connection(tokens[2], tokens[1]);
         servers[connection_socket] = new Client(connection_socket, true);
+        servers[connection_socket]->name = "P3_GROUP_6";
+        servers[connection_socket]->portnr = tokens[2];
+        servers[connection_socket]->ipaddr = tokens[1];
         FD_SET(connection_socket, openSockets);
         *maxfds = std::max(*maxfds, connection_socket);
         send_queryservers(connection_socket);
@@ -534,8 +539,9 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         server_msg = "SERVERS,P3_GROUP_7," + get_local_ip() + ',' + src_port + ';';
         for (auto const &pair : servers)
         {
-
             Client *client = pair.second;
+            std::cout << client->name <<  client->ipaddr << client->portnr << std::endl;
+
             server_msg += client->name + ',' + client->ipaddr + ',' + client->portnr + ';';
         }
     }
@@ -544,7 +550,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     {
         std::cout << "RESPONDING TO: " << message << std::endl;
         std::string log = tokens[1] + "GETS: " + message;
-        print(log)
+        log_to_file(log);
 
         std::vector<std::string> servers_info;
 
@@ -598,6 +604,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
     else if (tokens[0].compare("KEEPALIVE") == 0)
     {
+        std::cout << "I am a message from KEEPALIVE" << std::endl;
 
         int count = stoi(tokens[1]);
         // check if the message that we got from another server has any message for us
@@ -789,7 +796,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         perror("Message failed to send");
     }else{
 
-        printf("Message:%s succesfully sent ", server_msg.c_str());
+        printf("Message:%s succesfully sent \n", server_msg.c_str());
     }
 }
 
