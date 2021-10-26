@@ -506,6 +506,8 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     {
         std::cout << "WTF" << std::endl;
         std::string ip = get_local_ip();
+        std::cout << "src_port " << src_port << std::endl;
+        std::cout << "ip " << ip << std::endl;
         server_msg = "SERVERS,P3_GROUP_7," + ip + ',' + src_port + ';';
         std::cout << "WTFWTF" << std::endl;
         for (auto const &pair : servers)
