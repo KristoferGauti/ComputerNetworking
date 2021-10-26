@@ -465,7 +465,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             server_msg += client->name + ",";
         }
         server_msg.pop_back();
-        if (server_msg == "")
+        if (server_msg.empty())
         {
             server_msg = "No connected servers";
         }
@@ -543,7 +543,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     {
 
         int connection_socket = establish_connection(tokens[2], tokens[1], openSockets, maxfds);
-        send_queryservers(connection_socket, std::to_string(5000));
+        send_queryservers(clientSocket, std::to_string(5000));
         server_msg = "Sucessfully sent QUERYSERVERS";
     }
     else if (tokens[0].compare("STORED") == 0 && tokens.size() == 1)
@@ -555,7 +555,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ';';
         }
 
-        if (server_msg == "")
+        if (server_msg.empty())
         {
             server_msg = "You have no stored servers\n";
         }
@@ -839,7 +839,7 @@ void sendKeepAlive(){
     for(auto const &pair : servers){
         std::cout << "Inside KeepAlive" << '\n';
 
-        if(messages.count(pair.second->name) > 0){
+        if(messages.count(pair.second->name) >= 0){
             std::vector<std::string> storedmessages = messages[pair.second->name];
             std::string keepalive = "KEEPALIVE," + std::to_string(storedmessages.size());
             std::cout << "Inside KeepAlive" << '\n';
