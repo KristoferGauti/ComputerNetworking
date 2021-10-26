@@ -923,7 +923,6 @@ int main(int argc, char *argv[])
         // Add listen socket to socket set we are monitoring
         // Enables the server_listen_sock to enter "loops" where it listens for events
         FD_SET(server_listen_sock, &openSockets);
-        maxfds = server_listen_sock;
     }
 
     clientPort = serverPort + 1;
@@ -941,9 +940,8 @@ int main(int argc, char *argv[])
         // Add listen socket to socket set we are monitoring
         // Enables the server_listen_sock to enter "loops" where it listens for events
         FD_SET(client_listen_sock, &openSockets);
-        maxfds = client_listen_sock;
     }
-
+    maxfds = std::max(server_listen_sock, client_listen_sock);
     finished = false;
 
     std::thread keepAlive(sendKeepAlive);
