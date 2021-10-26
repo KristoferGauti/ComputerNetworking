@@ -753,6 +753,8 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     }
 
     std::cout << "Entered SEND" << std::endl;
+    std::cout << "Message: " << server_msg << std::endl;
+
     char send_buffer[server_msg.size() + 2];
     construct_message(send_buffer, server_msg);
     send(serverSocket, send_buffer, server_msg.size() + 2, 0);
