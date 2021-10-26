@@ -529,7 +529,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             std::string ip_address = group_IP_portnr_list[i + 1];
             std::string port_number = group_IP_portnr_list[i + 2];
 
-            if (!std::isdigit(port_number[0]))
+            if (std::isdigit(port_number[0]))
             {
 
                 int sockfd = open_socket(stoi(port_number), false);
