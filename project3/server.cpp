@@ -384,7 +384,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         tokens.push_back(token);
     }
 
-    std::string server_msg = "";
+    std::string server_msg;
 
     if (tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 1)
     {
@@ -404,22 +404,69 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     else if (tokens[0].compare("FETCH_MSG") == 0 && tokens.size() == 2)
     {
         std::vector<std::string> from_group = messages[tokens[1]];
-
         if (!from_group.empty())
         {
             server_msg = from_group.front();
-            from_group.erase(from_group.begin());
-            messages[tokens[1]] = from_group;
+
+            char send_buffer[server_msg.size() + 2];
+
+            construct_message(send_buffer, server_msg);
+            if(send(clientSocket, send_buffer, server_msg.size()+2, 0) < 0){
+                perror("Unable to send");
+            }
+            else{
+                printf("Message: %s sent succesfully", server_msg.c_str());
+            }
+            //from_group.erase(from_group.begin());
+            //messages[tokens[1]] = from_group;
         }
         else
         {
             server_msg = "No message";
         }
     }
+        // Sends the message that the client sent to the group
     else if (tokens[0].compare("SEND_MSG") == 0 && tokens.size() == 3)
     {
-        outgoing[tokens[1]].push_back(tokens[2]);
-        server_msg = "Message sent";
+        // some SEND MSG stuff
+        std::cout << "I am a message from SEND_MSG" << std::endl;
+        if ( connections.find(tokens[1]) != connections.end() ) {
+            // found
+            // send the msg content tokens[3]
+            //
+            std::string namefrom = connections[tokens[1]]->name;
+            std::string ipAddrfrom = connections[tokens[1]]->ipaddr;
+            std::string portnrfrom = connections[tokens[1]]->portnr;
+            int sockfrom = connections[tokens[1]]->sock;
+
+            std::string message = tokens[3];
+
+            char send_buffer[message.size() + 2];
+
+            construct_message(send_buffer, message);
+            int connection_socket = establish_connection(portnrfrom, ipAddrfrom);
+
+            // Store the connection into the connected_servers
+            servers[connection_socket] = new Client(connection_socket, true);
+            servers[connection_socket]->name = namefrom;
+            servers[connection_socket]->ipaddr = ipAddrfrom;
+            servers[connection_socket]->portnr = portnrfrom;
+
+            if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
+                perror("Unable to send");
+            }
+            else{
+                printf("Message: %s sent succesfully", message.c_str());
+            }
+
+        } else {
+            // not found
+            // cache the message and wait until someone fetches the message
+            std::vector<std::string> message;
+            message.push_back(tokens[2]);
+            messages.insert({tokens[1], message});
+            //messages[tokens[1]] = message.push_back(tokens[4]);
+        }
     }
 
     else if (tokens[0].compare("CONNECT") == 0 && tokens.size() == 3)
