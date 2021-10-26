@@ -44,3 +44,5 @@ ipch/
 *.suo
 server
 client
+ip
+test_server

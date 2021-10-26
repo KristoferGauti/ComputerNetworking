@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
         fgets(buffer, sizeof(buffer), stdin);
 
         newBuffer[0] = 0x02;
-        for (int i = 1; i < strlen(buffer); i++)
+        for (std::size_t i = 1; i < strlen(buffer); i++)
         {
             newBuffer[i] = buffer[index];
             index++;
