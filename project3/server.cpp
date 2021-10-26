@@ -364,16 +364,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
     if (tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 1)
     {
-        for (auto const &pair : servers)
-        {
-            Client *client = pair.second;
-            server_msg += client->name + ",";
-        }
-        server_msg.pop_back();
-        if (server_msg == "")
-        {
-            server_msg = "No connected servers";
-        }
+        std::cout << "I do not know what to do :(" << std::endl;
     }
 
     else if (tokens[0].compare("FETCH_MSG") == 0 && tokens.size() == 2)
@@ -494,12 +485,23 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
             if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && !isStored(group_id, stored_names))
             {
-                stored_servers[sockfd] = new Client(sockfd, true);
-                stored_servers[sockfd]->name = group_id;
-                stored_servers[sockfd]->ipaddr = ip_address;
-                stored_servers[sockfd]->portnr = port_number;
 
-                stored_names.push_back(group_id);
+                if (i == 0)
+                {
+                    servers[sockfd] = new Client(sockfd, true);
+                    servers[sockfd]->name = group_id;
+                    servers[sockfd]->ipaddr = ip_address;
+                    servers[sockfd]->portnr = port_number;
+                }
+                else
+                {
+                    stored_servers[sockfd] = new Client(sockfd, true);
+                    stored_servers[sockfd]->name = group_id;
+                    stored_servers[sockfd]->ipaddr = ip_address;
+                    stored_servers[sockfd]->portnr = port_number;
+
+                    stored_names.push_back(group_id);
+                }
             }
         }
     }
