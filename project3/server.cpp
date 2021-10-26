@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <net/if.h>
 #include <ifaddrs.h>
+#include <sys/select.h>
 
 //Global variables
 #define CHUNK_SIZE 512
@@ -75,7 +76,8 @@ std::map<int, Client *> clients;
 // identified servers
 std::map<int, Client *> servers;
 
-std::map<int, Client *> unknown;
+std::map<int, Client *> stored_servers;
+std::vector<std::string> stored_names;
 
 // connections that do not have all of the informations
 std::map<std::string, Client *> connections;
@@ -266,7 +268,7 @@ void server_vector(std::string message, std::vector<std::string> *servers_info)
         std::getline(ss, substr, ';');
         if (index == 0)
         { //Erasing SERVERS from the first string to get the string: groupId,IP,port
-            substr = substr.erase(0, 9);
+            substr = substr.erase(0, 8);
         }
 
         if (substr.size() != 1)
@@ -298,6 +300,7 @@ void send_queryservers(int connection_socket, std::string src_port)
     if (send(connection_socket, sendBuffer, message.length() + 2, 0) < 0)
     {
         perror("Sending message failed");
+        return;
     }
 }
 
@@ -327,13 +330,26 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
     FD_CLR(clientSocket, openSockets);
 }
 
+bool isStored(std::string id, std::vector<std::string> stored_names)
+{
+    bool stored = false;
+    for (int i = 0; i < stored_names.size(); i++)
+    {
+        if (stored_names[i] == id)
+        {
+            stored = true;
+            break;
+        }
+    }
+    return stored;
+}
+
 void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
 {
     std::string message = std::string(buffer);
     message.erase(0, 1);
     message.erase(message.size() - 1);
 
-    std::cout << "In client command" << std::endl;
     std::vector<std::string> tokens;
     std::string token;
     std::stringstream ss(message);
@@ -385,7 +401,24 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         int connection_socket = establish_connection(tokens[2], tokens[1]);
         servers[connection_socket] = new Client(connection_socket, true);
 
+        FD_SET(connection_socket, openSockets);
+        *maxfds = std::max(*maxfds, connection_socket);
+
         send_queryservers(connection_socket, std::to_string(5000));
+        server_msg = "Sucessfully sent QUERYSERVERS";
+    }
+    else if (tokens[0].compare("STORED") == 0 && tokens.size() == 1)
+    {
+        for (auto const &pair : stored_servers)
+        {
+            Client *client = pair.second;
+            server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ';';
+        }
+
+        if (server_msg == "")
+        {
+            server_msg = "You have no stored servers\n";
+        }
     }
     else
     {
@@ -400,11 +433,11 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 // Process command from client on the server
 void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
 {
+
     std::string message = std::string(buffer);
     message.erase(0, 1);
     message.erase(message.size() - 1);
-
-    std::cout << "In client command: " << message << std::endl;
+    std::cout << "The message we got: " << message << std::endl;
 
     std::vector<std::string> tokens;
     std::string token;
@@ -418,15 +451,9 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
     std::string server_msg = "";
 
-    if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 4)
+    if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 2)
     {
-        server_msg = "SERVERS,";
-        // store information about client
-        servers[serverSocket] = clients[serverSocket];
-
-        servers[serverSocket]->name = tokens[1];
-        servers[serverSocket]->ipaddr = tokens[2];
-        servers[serverSocket]->portnr = tokens[3];
+        server_msg = "SERVERS,P3_GROUP_7," + get_local_ip() + "," + src_port + ";";
 
         for (auto const &pair : clients)
         {
@@ -434,21 +461,46 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ';';
         }
 
-        char sendBuffer[server_msg.size() + 2];
+        // char sendBuffer[server_msg.size() + 2];
 
-        construct_message(sendBuffer, message);
+        // construct_message(sendBuffer, message);
 
-        if (send(serverSocket, sendBuffer, server_msg.size() + 2, 0) < 0)
-        {
-            perror("Sending message failed");
-        }
+        // if (send(serverSocket, sendBuffer, server_msg.size() + 2, 0) < 0)
+        // {
+        //     perror("Sending message failed");
+        // }
     }
 
     else if (tokens[0].compare("SERVERS") == 0)
     {
-        for (auto v : tokens)
+        std::cout << "RESPONDING TO: " << message << std::endl;
+
+        std::vector<std::string> servers_info;
+
+        server_vector(message, &servers_info);
+
+        std::vector<std::string> group_IP_portnr_list;
+
+        split_commas(&servers_info, &group_IP_portnr_list);
+
+        for (int i = 0; i < group_IP_portnr_list.size(); i += 3)
         {
-            std::cout << v << std::endl;
+
+            std::string group_id = group_IP_portnr_list[i];
+            std::string ip_address = group_IP_portnr_list[i + 1];
+            std::string port_number = group_IP_portnr_list[i + 2];
+
+            int sockfd = open_socket(stoi(port_number), false);
+
+            if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && !isStored(group_id, stored_names))
+            {
+                stored_servers[sockfd] = new Client(sockfd, true);
+                stored_servers[sockfd]->name = group_id;
+                stored_servers[sockfd]->ipaddr = ip_address;
+                stored_servers[sockfd]->portnr = port_number;
+
+                stored_names.push_back(group_id);
+            }
         }
     }
 
@@ -540,7 +592,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             messages[group] = {};
         }
     }
-    //server command
     else if (tokens[0].compare("SEND_MSG") == 0 && tokens.size() == 5)
     {
 
@@ -731,6 +782,7 @@ int main(int argc, char *argv[])
 
             while (n-- > 0)
             {
+
                 // SERVERS
                 for (auto const &pair : servers)
                 {
