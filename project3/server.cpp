@@ -558,6 +558,10 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
                     }
                 }
             }
+            else
+            {
+                std::cout << "This is not a number: " << port_number << std::endl;
+            }
         }
     }
 
