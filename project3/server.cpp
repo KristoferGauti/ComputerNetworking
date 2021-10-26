@@ -663,13 +663,9 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 			if (msg_pair.second.size() == 0) {
 				continue;
 			}
-			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ",";			
+			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ";";			
 		}
 		char send_buffer[response.size() + 2];
-
-        if (!response.empty()) {
-            response.pop_back();
-        }
 
 		construct_message(send_buffer, response);
 
@@ -689,13 +685,9 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 			if (msg_pair.second.size() == 0) {
 				continue;
 			}
-			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ",";			
+			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ";";			
 		}
 		char send_buffer[response.size() + 2];
-
-        if (!response.empty()) {
-            response.pop_back();
-        }
 
 		construct_message(send_buffer, response);
 
