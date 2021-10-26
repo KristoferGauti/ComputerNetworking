@@ -537,12 +537,14 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 2)
     {
         server_msg = "SERVERS,P3_GROUP_7," + get_local_ip() + ',' + src_port + ';';
-        for (auto const &pair : servers)
-        {
-            Client *client = pair.second;
-            std::cout << client->name <<  client->ipaddr << client->portnr << std::endl;
+        if(!servers.empty()){
+            for (auto const &pair : servers)
+            {
+                Client *client = pair.second;
+                std::cout << client->name <<  client->ipaddr << client->portnr << std::endl;
 
-            server_msg += client->name + ',' + client->ipaddr + ',' + client->portnr + ';';
+                server_msg += client->name + ',' + client->ipaddr + ',' + client->portnr + ';';
+            }
         }
     }
 
