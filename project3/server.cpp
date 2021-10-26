@@ -530,10 +530,10 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
                 if (i == 0)
                 {
-                    servers[sockfd] = new Client(sockfd, true);
-                    servers[sockfd]->name = group_id;
-                    servers[sockfd]->ipaddr = ip_address;
-                    servers[sockfd]->portnr = port_number;
+                    servers[serverSocket] = new Client(sockfd, true);
+                    servers[serverSocket]->name = group_id;
+                    servers[serverSocket]->ipaddr = ip_address;
+                    servers[serverSocket]->portnr = port_number;
                 }
                 else
                 {
@@ -740,6 +740,8 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     else if ((tokens[0].compare("FETCH_MSG") == 0) && tokens.size() == 4)
     {
     }
+
+    std::cout << "Message: " << server_msg << std::endl;
 
     char send_buffer[server_msg.size() + 2];
     construct_message(send_buffer, server_msg);
