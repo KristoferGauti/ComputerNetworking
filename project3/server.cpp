@@ -147,7 +147,7 @@ std::string get_local_ip()
         }
         else
         {
-            if ((std::string)ifa->ifa_name == "en0" || (std::string)ifa->ifa_name == "wlp1s0")
+            if ((std::string)ifa->ifa_name == "en0" || (std::string)ifa->ifa_name == "wlp1s0" || (std::string)ifa->ifa_name == "ens192")
             {
                 if (std::string(buf).find('.') != std::string::npos)
                 {
