@@ -842,7 +842,7 @@ int main(int argc, char *argv[])
                 maxfds = std::max(maxfds, serverSock);
 
                 // create a new client to store information.
-                clients[serverSock] = new Client(serverSock, true);
+                servers[serverSock] = new Client(serverSock, true);
 
                 // Decrement the number of sockets waiting to be dealt with
                 n--;
