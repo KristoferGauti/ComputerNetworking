@@ -39,6 +39,7 @@
 #include <fcntl.h>
 #define SOCK_NONBLOCK O_NONBLOCK
 #endif
+int FINISHED = false;
 
 #define BACKLOG 5 // Allowed length of queue of waiting connections
 
@@ -491,7 +492,11 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     std::string message = std::string(buffer);
     message.erase(0, 1);
     message.erase(message.size() - 1);
-    std::cout << "The message we got: " << message << std::endl;
+
+    if (!message.empty())
+    {
+        std::cout << "The message we got: " << message << std::endl;
+    }
 
     std::vector<std::string> tokens;
     std::string token;
@@ -757,9 +762,60 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     send(serverSocket, send_buffer, server_msg.size() + 2, 0);
 }
 
+// Sends on KEEPALIVE on 1 minute interval
+void sendKeepAlive()
+{
+    while (!FINISHED)
+    {
+        std::this_thread::sleep_for(std::chrono::minutes(1));
+        for (auto const &pair : servers)
+        {
+            if (messages.count(pair.second->name) >= 0)
+            {
+                std::vector<std::string> storedmessages = messages[pair.second->name];
+                std::string keepalive = "KEEPALIVE," + std::to_string(storedmessages.size());
+
+                char send_buffer[keepalive.size() + 2];
+                construct_message(send_buffer, keepalive);
+                std::cout << "Sending KEEPALIVE to " << servers[pair.second->sock]->name << std::endl;
+                if (send(pair.second->sock, send_buffer, keepalive.length() + 2, 0) < 0)
+                {
+                    perror("Sending message failed");
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// Sends on QUERYSERVERS on 7:30 minutes interval
+void sendUpdates(std::string port)
+{
+
+    std::this_thread::sleep_for(std::chrono::minutes(7));
+    std::this_thread::sleep_for(std::chrono::seconds(30));
+    //sleep(10);
+
+    for (auto const &pair : servers)
+    {
+        std::string query = "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' + port;
+
+        char send_buffer[query.size() + 2];
+
+        construct_message(send_buffer, query);
+
+        if (send(pair.second->sock, send_buffer, query.length() + 2, 0) < 0)
+        {
+            perror("Sending message failed");
+            break;
+        }
+        std::cout << "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' + port << std::endl;
+    }
+}
+
 int main(int argc, char *argv[])
 {
-    bool finished;
+    bool FINISHED;
     int server_listen_sock;
     int client_listen_sock;
     int serverSock;
@@ -819,9 +875,12 @@ int main(int argc, char *argv[])
         maxfds = client_listen_sock;
     }
 
-    finished = false;
+    FINISHED = false;
+    std::thread keepAlive(sendKeepAlive);
+    std::string port = std::string(argv[1]);
+    std::thread Updates(sendUpdates, port);
 
-    while (!finished)
+    while (!FINISHED)
     {
         // Get modifiable copy of readSockets
         readSockets = exceptSockets = openSockets;
@@ -834,7 +893,7 @@ int main(int argc, char *argv[])
         if (n < 0)
         {
             perror("select failed - closing down\n");
-            finished = true;
+            FINISHED = true;
         }
         else
         {
@@ -943,4 +1002,6 @@ int main(int argc, char *argv[])
             }
         }
     }
+    keepAlive.join();
+    Updates.join();
 }
