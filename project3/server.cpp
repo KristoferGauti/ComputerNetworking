@@ -289,7 +289,7 @@ int establish_connection(std::string port_nr, std::string ip_addr, fd_set *openS
     printf("Server - accept***\n");
     // Add new client to the list of open sockets
     FD_SET(serverSocket, openSockets);
-
+    servers[serverSocket] = new Client(serverSocket, true);
     // And update the maximum file descriptor
     *maxfds = std::max(*maxfds, serverSocket);
 
@@ -356,6 +356,7 @@ void send_queryservers(int connection_socket, std::string src_port)
         perror("Sending message failed");
     }
 }
+
 
 /*
  * Split the command received into the relevant server info that is needed
@@ -465,7 +466,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             server_msg += client->name + ",";
         }
         server_msg.pop_back();
-        if (server_msg == "")
+        if (server_msg.empty())
         {
             server_msg = "No connected servers";
         }
@@ -543,7 +544,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     {
 
         int connection_socket = establish_connection(tokens[2], tokens[1], openSockets, maxfds);
-        send_queryservers(connection_socket, std::to_string(5000));
+        send_queryservers(clientSocket, std::to_string(5000));
         server_msg = "Sucessfully sent QUERYSERVERS";
     }
     else if (tokens[0].compare("STORED") == 0 && tokens.size() == 1)
@@ -555,7 +556,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ';';
         }
 
-        if (server_msg == "")
+        if (server_msg.empty())
         {
             server_msg = "You have no stored servers\n";
         }
@@ -589,7 +590,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         tokens.push_back(token);
     }
 
-    std::string server_msg = "";
+    std::string server_msg;
 
     if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 2)
     {
@@ -688,7 +689,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             }
         }
     }
-        //server command
+    //server command
     else if (tokens[0].compare("FETCH_MSGS") == 0 && tokens.size() == 3)
     {
         // some FETCH MSGS stuff
@@ -897,41 +898,33 @@ int main(int argc, char *argv[])
     }
 
     serverPort = atoi(argv[1]);
+    clientPort = serverPort + 1;
 
     // Setup socket for server to listen to
     server_listen_sock = open_socket(atoi(argv[1]), true);
+    client_listen_sock = open_socket(atoi(argv[1]) + 1, true);
+
     printf("Server listening on port: %d\n", serverPort);
+    printf("Server listening on port: %d\n", clientPort);
+
 
     if (listen(server_listen_sock, BACKLOG) < 0)
-
     {
-        printf("Listen failed on port %s\n", argv[1]);
+        printf("Listen failed on client port %s\n", (argv[1]));
+        exit(0);
+    }
+    else if (listen(client_listen_sock, BACKLOG) < 0)
+    {
+        printf("Listen failed on server port %s\n", ((argv[1]) + 1));
         exit(0);
     }
     else
-    {
         // Add listen socket to socket set we are monitoring
-        // Enables the server_listen_sock to enter "loops" where it listens for events
+    {
+        FD_ZERO(&openSockets);
         FD_SET(server_listen_sock, &openSockets);
-        maxfds = server_listen_sock;
-    }
-
-    clientPort = serverPort + 1;
-
-    client_listen_sock = open_socket(atoi(argv[1]) + 1, true);
-    printf("Client listening on port: %d\n", clientPort);
-
-    if (listen(client_listen_sock, BACKLOG) < 0)
-    {
-        printf("Listen failed on port %s\n", argv[1]);
-        exit(0);
-    }
-    else
-    {
-        // Add listen socket to socket set we are monitoring
-        // Enables the server_listen_sock to enter "loops" where it listens for events
         FD_SET(client_listen_sock, &openSockets);
-        maxfds = client_listen_sock;
+        maxfds = std::max(server_listen_sock, client_listen_sock);
     }
 
     FINISHED = false;
@@ -965,7 +958,7 @@ int main(int argc, char *argv[])
                 serverSock = accept(server_listen_sock, (struct sockaddr *)&client,
 
                                     &clientLen);
-                printf("accept***\n");
+                printf("accept***SERVER\n");
                 // Add new client to the list of open sockets
                 FD_SET(serverSock, &openSockets);
 
@@ -973,7 +966,7 @@ int main(int argc, char *argv[])
                 maxfds = std::max(maxfds, serverSock);
 
                 // create a new client to store information.
-                clients[serverSock] = new Client(serverSock, true);
+                servers[serverSock] = new Client(serverSock, true);
 
                 // Decrement the number of sockets waiting to be dealt with
                 n--;
@@ -986,7 +979,7 @@ int main(int argc, char *argv[])
             {
                 clientSock = accept(client_listen_sock, (struct sockaddr *)&client,
                                     &clientLen);
-                printf("accept***\n");
+                printf("accept***CLIENT\n");
                 // Add new client to the list of open sockets
                 FD_SET(clientSock, &openSockets);
 
