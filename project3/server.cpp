@@ -344,7 +344,7 @@ void construct_message(char *send_buffer, std::string message)
     }
     send_buffer[strlen(temp_buffer) + 1] = 0x03;
 }
-/*
+
 void send_queryservers(int connection_socket, std::string src_port)
 {
     std::string message = "QUERYSERVERS,P3_GROUP_7,"; //+ get_local_ip() + "," + src_port;
@@ -355,7 +355,7 @@ void send_queryservers(int connection_socket, std::string src_port)
         perror("Sending message failed");
     }
 }
-*/
+
 
 /*
  * Split the command received into the relevant server info that is needed
