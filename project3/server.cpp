@@ -966,7 +966,7 @@ int main(int argc, char *argv[])
                 serverSock = accept(server_listen_sock, (struct sockaddr *)&client,
 
                                     &clientLen);
-                printf("accept***\n");
+                printf("accept***SERVER\n");
                 // Add new client to the list of open sockets
                 FD_SET(serverSock, &openSockets);
 
@@ -987,7 +987,7 @@ int main(int argc, char *argv[])
             {
                 clientSock = accept(client_listen_sock, (struct sockaddr *)&client,
                                     &clientLen);
-                printf("accept***\n");
+                printf("accept***CLIENT\n");
                 // Add new client to the list of open sockets
                 FD_SET(clientSock, &openSockets);
 
