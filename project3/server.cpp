@@ -102,7 +102,8 @@ bool valid_message(char *buffer)
  */
 void parse_message(char *buffer, char *newBuffer)
 {
-    for (int i = 1; i < strlen(buffer); i++)
+
+    for (std::size_t i = 1; i < strlen(buffer); i++)
     {
         newBuffer[i - 1] = buffer[i];
     }
@@ -132,22 +133,22 @@ std::string get_local_ip()
 
         switch (ifa->ifa_addr->sa_family)
         {
-        case AF_INET:
-        {
-            struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
-            in_addr = &s4->sin_addr;
-            break;
-        }
+            case AF_INET:
+            {
+                struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
+                in_addr = &s4->sin_addr;
+                break;
+            }
 
-        case AF_INET6:
-        {
-            struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)ifa->ifa_addr;
-            in_addr = &s6->sin6_addr;
-            break;
-        }
+            case AF_INET6:
+            {
+                struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)ifa->ifa_addr;
+                in_addr = &s6->sin6_addr;
+                break;
+            }
 
-        default:
-            continue;
+            default:
+                continue;
         }
 
         if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, buf, sizeof(buf)))
@@ -227,32 +228,101 @@ int open_socket(int portno, bool is_server_socket = true)
     return sock;
 }
 
-int establish_connection(std::string port_nr, std::string ip_addr)
+int establish_connection(std::string port_nr, std::string ip_addr, fd_set *openSockets, int *maxfds)
 {
 
-    struct sockaddr_in server_addr;                      //Declare Server Address
-    server_addr.sin_family = AF_INET;                    //IPv4 address family
-    server_addr.sin_addr.s_addr = INADDR_ANY;            //Bind Socket to all available interfaces
-    server_addr.sin_port = htons(atoi(port_nr.c_str())); //Convert the ASCII port number to integer port number
+    struct addrinfo hints, *svr;  // Network host entry for server
+    struct sockaddr_in serv_addr; // Socket address for server
+    int serverSocket;             // Socket used for server
+    int set = 1;                  // Toggle for setsockopt
 
-    //Check for errors for set socket address
-    if (inet_pton(AF_INET, ip_addr.c_str(), &server_addr.sin_addr) <= 0)
+    hints.ai_family = AF_INET; // IPv4 only addresses
+    hints.ai_socktype = SOCK_STREAM;
+
+    memset(&hints, 0, sizeof(hints));
+
+    if (getaddrinfo(ip_addr.c_str(), port_nr.c_str(), &hints, &svr) != 0)
     {
-        printf("\nInvalid address/ Address not supported \n");
-        exit(0);
+        perror("getaddrinfo failed: ");
+        return -1;
     }
 
-    //Create a tcp socket
-    int connection_socket = open_socket(stoi(port_nr), false);
+    struct hostent *server;
+    server = gethostbyname(ip_addr.c_str());
 
-    if (connect(connection_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    bzero((char *)&serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr,
+          (char *)&serv_addr.sin_addr.s_addr,
+          server->h_length);
+    serv_addr.sin_port = htons(atoi(port_nr.c_str()));
+
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+    // Turn on SO_REUSEADDR to allow socket to be quickly reused after
+    // program exit.
+
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
     {
-
-        perror("\nConnection failed");
-        exit(0);
+        printf("Failed to set SO_REUSEADDR for port %s\n", port_nr.c_str());
+        perror("setsockopt failed: ");
+        return -1;
     }
 
-    std::cout << "CONNECTED TO SERVER ON IP: " + ip_addr + ", PORT: " + port_nr << std::endl;
+    int connection_socket = connect(serverSocket, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+
+    if (connection_socket < 0)
+    {
+        // EINPROGRESS means that the connection is still being setup. Typically this
+        // only occurs with non-blocking sockets. (The serverSocket above is explicitly
+        // not in non-blocking mode, so this check here is just an example of how to
+        // handle this properly.)
+        if (errno != EINPROGRESS)
+        {
+            printf("Failed to open socket to server: %s\n", port_nr.c_str());
+            perror("Connect failed: ");
+        }
+        return -1;
+    }
+
+    printf("Server - accept***\n");
+    // Add new client to the list of open sockets
+    FD_SET(serverSocket, openSockets);
+
+    // And update the maximum file descriptor
+    *maxfds = std::max(*maxfds, serverSocket);
+
+    // Listen and print replies from server
+   /* std::thread serverThread(listenServer, serverSocket);
+    finished = false;
+    while (!finished)
+    {
+        // clear buffers
+        bzero(buffer, sizeof(buffer));
+        bzero(newBuffer, sizeof(newBuffer));
+
+        // take input on the buffer
+        fgets(buffer, sizeof(buffer), stdin);
+
+        newBuffer[0] = 0x02;
+        for (std::size_t i = 1; i < strlen(buffer); i++)
+        {
+            newBuffer[i] = buffer[index];
+            index++;
+        }
+        newBuffer[strlen(buffer)] = 0x03;
+
+        index = 0;
+
+        // send and use nwrite to see if there was any reply
+        nwrite = send(serverSocket, newBuffer, strlen(newBuffer), 0);
+
+        if (nwrite == -1)
+        {
+            perror("send() to server failed: ");
+            finished = true;
+        }
+    }*/
 
     return connection_socket;
 }
@@ -267,7 +337,7 @@ void construct_message(char *send_buffer, std::string message)
     strcpy(temp_buffer, message.c_str());
     send_buffer[0] = 0x02;
     int index = 0;
-    for (int i = 1; i <= strlen(temp_buffer); i++)
+    for (std::size_t i = 1; i <= message.size(); i++)
     {
         send_buffer[i] = temp_buffer[index];
         index++;
@@ -277,7 +347,7 @@ void construct_message(char *send_buffer, std::string message)
 /*
 void send_queryservers(int connection_socket, std::string src_port)
 {
-    std::string message = "QUERYSERVERS,P3_GROUP_7," + get_local_ip() + "," + src_port;
+    std::string message = "QUERYSERVERS,P3_GROUP_7,"; //+ get_local_ip() + "," + src_port;
     char sendBuffer[message.size() + 2];
     construct_message(sendBuffer, message);
     if (send(connection_socket, sendBuffer, message.length() + 2, 0) < 0)
@@ -357,7 +427,7 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
 bool isStored(std::string id, std::vector<std::string> stored_names)
 {
     bool stored = false;
-    for (int i = 0; i < stored_names.size(); i++)
+    for (std::size_t i = 0; i < stored_names.size(); i++)
     {
         if (stored_names[i] == id)
         {
@@ -384,7 +454,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         tokens.push_back(token);
     }
 
-    std::string server_msg = "";
+    std::string server_msg;
 
     if (tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 1)
     {
@@ -404,28 +474,77 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     else if (tokens[0].compare("FETCH_MSG") == 0 && tokens.size() == 2)
     {
         std::vector<std::string> from_group = messages[tokens[1]];
-
         if (!from_group.empty())
         {
             server_msg = from_group.front();
-            from_group.erase(from_group.begin());
-            messages[tokens[1]] = from_group;
+
+            char send_buffer[server_msg.size() + 2];
+
+            construct_message(send_buffer, server_msg);
+            if(send(clientSocket, send_buffer, server_msg.size()+2, 0) < 0){
+                perror("Unable to send");
+            }
+            else{
+                printf("Message: %s sent succesfully", server_msg.c_str());
+            }
+            //from_group.erase(from_group.begin());
+            //messages[tokens[1]] = from_group;
         }
         else
         {
             server_msg = "No message";
         }
     }
+        // Sends the message that the client sent to the group
     else if (tokens[0].compare("SEND_MSG") == 0 && tokens.size() == 3)
     {
-        outgoing[tokens[1]].push_back(tokens[2]);
-        server_msg = "Message sent";
+        // some SEND MSG stuff
+        std::cout << "I am a message from SEND_MSG" << std::endl;
+        if ( connections.find(tokens[1]) != connections.end() ) {
+            // found
+            // send the msg content tokens[3]
+            //
+            std::string namefrom = connections[tokens[1]]->name;
+            std::string ipAddrfrom = connections[tokens[1]]->ipaddr;
+            std::string portnrfrom = connections[tokens[1]]->portnr;
+            //int sockfrom = connections[tokens[1]]->sock;
+
+            std::string message = tokens[3];
+
+            char send_buffer[message.size() + 2];
+
+            construct_message(send_buffer, message);
+            int connection_socket = establish_connection(portnrfrom, ipAddrfrom, openSockets, maxfds);
+
+            // Store the connection into the connected_servers
+            servers[connection_socket] = new Client(connection_socket, true);
+            servers[connection_socket]->name = namefrom;
+            servers[connection_socket]->ipaddr = ipAddrfrom;
+            servers[connection_socket]->portnr = portnrfrom;
+
+            if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
+                perror("Unable to send");
+            }
+            else{
+                printf("Message: %s sent succesfully", message.c_str());
+            }
+
+        } else {
+            // not found
+            // cache the message and wait until someone fetches the message
+            std::vector<std::string> message;
+            message.push_back(tokens[2]);
+            messages.insert({tokens[1], message});
+            //messages[tokens[1]] = message.push_back(tokens[4]);
+        }
     }
 
     else if (tokens[0].compare("CONNECT") == 0 && tokens.size() == 3)
     {
 
-        std::cout << "I do not know what to do :(" << std::endl;
+        int connection_socket = establish_connection(tokens[2], tokens[1], openSockets, maxfds);
+        send_queryservers(connection_socket, std::to_string(5000));
+        server_msg = "Sucessfully sent QUERYSERVERS";
     }
     else if (tokens[0].compare("STORED") == 0 && tokens.size() == 1)
 
@@ -481,15 +600,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             Client *client = pair.second;
             server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ';';
         }
-
-        // char sendBuffer[server_msg.size() + 2];
-
-        // construct_message(sendBuffer, message);
-
-        // if (send(serverSocket, sendBuffer, server_msg.size() + 2, 0) < 0)
-        // {
-        //     perror("Sending message failed");
-        // }
     }
 
     else if (tokens[0].compare("SERVERS") == 0)
@@ -504,7 +614,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
         split_commas(&servers_info, &group_IP_portnr_list);
 
-        for (int i = 0; i < group_IP_portnr_list.size(); i += 3)
+        for (std::size_t i = 0; i < group_IP_portnr_list.size(); i += 3)
         {
 
             std::string group_id = group_IP_portnr_list[i];
@@ -515,12 +625,23 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
             if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && !isStored(group_id, stored_names))
             {
-                stored_servers[sockfd] = new Client(sockfd, true);
-                stored_servers[sockfd]->name = group_id;
-                stored_servers[sockfd]->ipaddr = ip_address;
-                stored_servers[sockfd]->portnr = port_number;
 
-                stored_names.push_back(group_id);
+                if (i == 0)
+                {
+                    servers[sockfd] = new Client(sockfd, true);
+                    servers[sockfd]->name = group_id;
+                    servers[sockfd]->ipaddr = ip_address;
+                    servers[sockfd]->portnr = port_number;
+                }
+                else
+                {
+                    stored_servers[sockfd] = new Client(sockfd, true);
+                    stored_servers[sockfd]->name = group_id;
+                    stored_servers[sockfd]->ipaddr = ip_address;
+                    stored_servers[sockfd]->portnr = port_number;
+
+                    stored_names.push_back(group_id);
+                }
             }
         }
     }
@@ -555,7 +676,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
+            int connection_socket = establish_connection(portnrto, ipAddrto, openSockets, maxfds);
 
             if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
             {
@@ -567,7 +688,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             }
         }
     }
-    //server command
+        //server command
     else if (tokens[0].compare("FETCH_MSGS") == 0 && tokens.size() == 3)
     {
         // some FETCH MSGS stuff
@@ -595,7 +716,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
+            int connection_socket = establish_connection(portnrto, ipAddrto, openSockets, maxfds);
 
             if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
             {
@@ -632,7 +753,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
+            int connection_socket = establish_connection(portnrto, ipAddrto, openSockets, maxfds);
 
             if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
             {
@@ -658,24 +779,108 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     {
         // some STATUSREQ stuff
         std::cout << "I am a message from STATUSREQ" << std::endl;
+
+        std::string response = "STATUSRESP,P3_GROUP_7," + servers[serverSocket]->name + ",";
+        for (auto const &msg_pair : messages) {
+            if (msg_pair.second.size() == 0) {
+                continue;
+            }
+            response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ";";
+        }
+        char send_buffer[response.size() + 2];
+
+        construct_message(send_buffer, response);
+
+        if (send(serverSocket, send_buffer, response.size()+2, 0) < 0) {
+            perror("Sending STATUSREQ failed!");
+        }
     }
+
     else if (tokens[0].compare("STATUSRESP") == 0)
     {
         // some STATUSRESP stuff
         std::cout << "I am a message from STATUSRESP" << std::endl;
-    }
-    //client command
-    else if ((tokens[0].compare("SEND_MSG") == 0) && tokens.size() == 4)
-    {
-    }
-    //client command
-    else if ((tokens[0].compare("FETCH_MSG") == 0) && tokens.size() == 4)
-    {
+
+        std::string response = "STATUSRESP,P3_GROUP_7," + servers[serverSocket]->name + ",";
+
+        for (auto const &msg_pair : messages) {
+            if (msg_pair.second.size() == 0) {
+                continue;
+            }
+            response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ";";
+        }
+        char send_buffer[response.size() + 2];
+
+        construct_message(send_buffer, response);
+
+        if (send(serverSocket, send_buffer, response.size()+2, 0) < 0) {
+            perror("Sending STATUSRESP failed!");
+        }
+
     }
 
     char send_buffer[server_msg.size() + 2];
     construct_message(send_buffer, server_msg);
     send(serverSocket, send_buffer, server_msg.size() + 2, 0);
+}
+
+// Sends on KEEPALIVE on 2:30 minutes interval
+void sendKeepAlive(){
+    // next three comments are for the periodically KEEPALIVE that our server sends
+    // use threads to wait a minute
+    // check if we have some message stored for a server
+    // send to the server KEEPALIVE,how many messages
+
+    //std::this_thread::sleep_for(std::chrono::minutes(2));
+    //std::this_thread::sleep_for(std::chrono::seconds (30));
+    sleep(10);
+
+
+    for(auto const &pair : servers){
+        std::cout << "Inside KeepAlive" << '\n';
+
+        if(messages.count(pair.second->name) > 0){
+            std::vector<std::string> storedmessages = messages[pair.second->name];
+            std::string keepalive = "KEEPALIVE," + std::to_string(storedmessages.size());
+            std::cout << "Inside KeepAlive" << '\n';
+
+            char send_buffer[keepalive.size()+2];
+
+            construct_message(send_buffer, keepalive);
+
+            if (send(pair.second->sock, send_buffer, keepalive.length() + 2, 0) < 0)
+            {
+                perror("Sending message failed");
+                break;
+            }
+            std::cout << "KEEPALIVE," + std::to_string(storedmessages.size()) << std::endl;
+        }
+    }
+}
+
+// Sends on QUERYSERVERS on 7:30 minutes interval
+void sendUpdates(std::string port){
+    std::this_thread::sleep_for(std::chrono::minutes(7));
+    std::this_thread::sleep_for(std::chrono::seconds (30));
+    //sleep(10);
+
+
+
+    for(auto const &pair : servers){
+        std::string query = "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' + port;
+
+        char send_buffer[query.size()+2];
+
+        construct_message(send_buffer, query);
+
+        if (send(pair.second->sock, send_buffer, query.length() + 2, 0) < 0)
+        {
+            perror("Sending message failed");
+            break;
+        }
+        std::cout << "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' + port << std::endl;
+
+    }
 }
 
 int main(int argc, char *argv[])
@@ -741,6 +946,10 @@ int main(int argc, char *argv[])
     }
 
     finished = false;
+
+    std::thread keepAlive(sendKeepAlive);
+    std::string port = std::string(argv[1]);
+    std::thread Updates(sendUpdates, std::ref(port));
 
     while (!finished)
     {
