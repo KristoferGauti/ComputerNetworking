@@ -424,9 +424,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
         int connection_socket = establish_connection(tokens[2], tokens[1]);
         servers[connection_socket] = new Client(connection_socket, true);
-        servers[connection_socket]->ipaddr = tokens[1];
-        servers[connection_socket]->portnr = tokens[2];
-        servers[connection_socket]->name = "fjdsaklfæjklsa";
         FD_SET(connection_socket, openSockets);
         *maxfds = std::max(*maxfds, connection_socket);
         send_queryservers(connection_socket);
@@ -853,7 +850,7 @@ int main(int argc, char *argv[])
                 maxfds = std::max(maxfds, serverSock);
 
                 // create a new client to store information.
-                servers[serverSock] = new Client(serverSock, true);
+                servers[serverSock] = new Client(serverSock, false);
 
                 // Decrement the number of sockets waiting to be dealt with
                 n--;
