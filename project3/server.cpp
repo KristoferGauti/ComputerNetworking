@@ -373,7 +373,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         tokens.push_back(token);
     }
 
-    std::string server_msg = "";
+    std::string server_msg;
 
     if (tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 1)
     {
@@ -435,6 +435,22 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             server_msg = "You have no stored servers\n";
         }
     }
+
+    else if (tokens[0].compare("CONNECTIONS") == 0 && tokens.size() == 1)
+    {
+        for (auto const &pair : servers)
+        {
+            Client *client = pair.second;
+            server_msg += client->name + ",";
+        }
+
+        server_msg.pop_back();
+
+        if (server_msg == "")
+        {
+            server_msg = "You have no connections\n";
+        }
+    }
     else
     {
         server_msg = "Unknown command: " + message + "\n" + "COMMANDS:\n" + "  - QUERYSERVERS\n" + "  - FETCH_MSG,<GROUP_ID>\n" + "  - SEND_MSG,<GROUP_ID>,<MESSAGE>";
@@ -457,6 +473,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         char send_buffer[server_msg.size() + 2];
         construct_message(send_buffer, server_msg);
         send(serverSocket, send_buffer, server_msg.size() + 2, 0);
+        std::cout << "NOT A VALID MESSAGE" << std::endl;
         return;
     }
 
@@ -507,7 +524,8 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
             int sockfd = open_socket(stoi(port_number), false);
 
-            if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && !isStored(group_id, stored_names))
+            std::cout << "Name: " << group_id << std::endl;
+            if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && port_number.size() == 4)
             {
 
                 if (i == 0)
@@ -519,12 +537,15 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
                 }
                 else
                 {
-                    stored_servers[sockfd] = new Client(sockfd, true);
-                    stored_servers[sockfd]->name = group_id;
-                    stored_servers[sockfd]->ipaddr = ip_address;
-                    stored_servers[sockfd]->portnr = port_number;
+                    if (!isStored(group_id, stored_names))
+                    {
+                        stored_servers[sockfd] = new Client(sockfd, true);
+                        stored_servers[sockfd]->name = group_id;
+                        stored_servers[sockfd]->ipaddr = ip_address;
+                        stored_servers[sockfd]->portnr = port_number;
 
-                    stored_names.push_back(group_id);
+                        stored_names.push_back(group_id);
+                    }
                 }
             }
         }
@@ -540,12 +561,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
     else if (tokens[0].compare("KEEPALIVE") == 0)
     {
-        // some KEEPALIVE stuff
-        std::cout << "I am a message from KEEPALIVE" << std::endl;
-        // next three comments are for the periodically KEEPALIVE that our server sends
-        // use threads to wait a minute
-        // check if we have some message stored for a server
-        // send to the server KEEPALIVE,how many messages
 
         int count = stoi(tokens[1]);
         // check if the message that we got from another server has any message for us
