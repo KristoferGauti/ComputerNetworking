@@ -426,6 +426,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         servers[connection_socket] = new Client(connection_socket, true);
         servers[connection_socket]->ipaddr = tokens[1];
         servers[connection_socket]->portnr = tokens[2];
+        servers[connection_socket]->name = "fjdsaklfæjklsa";
         FD_SET(connection_socket, openSockets);
         *maxfds = std::max(*maxfds, connection_socket);
         send_queryservers(connection_socket);
