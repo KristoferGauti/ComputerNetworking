@@ -472,7 +472,12 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     else if (tokens[0].compare("CONNECT") == 0 && tokens.size() == 3)
     {
 
-        std::cout << "I do not know what to do :(" << std::endl;
+        int connection_socket = establish_connection(tokens[2], tokens[1]);
+        servers[connection_socket] = new Client(connection_socket, true);
+        FD_SET(connection_socket, openSockets);
+        *maxfds = std::max(*maxfds, connection_socket);
+        send_queryservers(connection_socket, std::to_string(5000));
+        server_msg = "Sucessfully sent QUERYSERVERS";
     }
     else if (tokens[0].compare("STORED") == 0 && tokens.size() == 1)
 
@@ -528,15 +533,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             Client *client = pair.second;
             server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ';';
         }
-
-        // char sendBuffer[server_msg.size() + 2];
-
-        // construct_message(sendBuffer, message);
-
-        // if (send(serverSocket, sendBuffer, server_msg.size() + 2, 0) < 0)
-        // {
-        //     perror("Sending message failed");
-        // }
     }
 
     else if (tokens[0].compare("SERVERS") == 0)
@@ -562,12 +558,23 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
             if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && !isStored(group_id, stored_names))
             {
-                stored_servers[sockfd] = new Client(sockfd, true);
-                stored_servers[sockfd]->name = group_id;
-                stored_servers[sockfd]->ipaddr = ip_address;
-                stored_servers[sockfd]->portnr = port_number;
 
-                stored_names.push_back(group_id);
+                if (i == 0)
+                {
+                    servers[sockfd] = new Client(sockfd, true);
+                    servers[sockfd]->name = group_id;
+                    servers[sockfd]->ipaddr = ip_address;
+                    servers[sockfd]->portnr = port_number;
+                }
+                else
+                {
+                    stored_servers[sockfd] = new Client(sockfd, true);
+                    stored_servers[sockfd]->name = group_id;
+                    stored_servers[sockfd]->ipaddr = ip_address;
+                    stored_servers[sockfd]->portnr = port_number;
+
+                    stored_names.push_back(group_id);
+                }
             }
         }
     }
@@ -711,13 +718,9 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 			if (msg_pair.second.size() == 0) {
 				continue;
 			}
-			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ",";			
+			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ";";			
 		}
 		char send_buffer[response.size() + 2];
-
-        if (!response.empty()) {
-            response.pop_back();
-        }
 
 		construct_message(send_buffer, response);
 
@@ -737,13 +740,9 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 			if (msg_pair.second.size() == 0) {
 				continue;
 			}
-			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ",";			
+			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ";";			
 		}
 		char send_buffer[response.size() + 2];
-
-        if (!response.empty()) {
-            response.pop_back();
-        }
 
 		construct_message(send_buffer, response);
 
