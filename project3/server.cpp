@@ -1036,6 +1036,8 @@ int main(int argc, char *argv[])
                         // only triggers if there is something on the socket for us.
                         if (valid_message(buffer))
                         {
+                            std::cout << "Server!" << std::endl;
+
                             serverCommand(client->sock, &openSockets, &maxfds, buffer, std::to_string(serverPort));
                         }
                     }
@@ -1062,6 +1064,7 @@ int main(int argc, char *argv[])
                         // only triggers if there is something on the socket for us.
                         if (valid_message(buffer))
                         {
+                            std::cout << "Client!" << std::endl;
                             clientCommand(client->sock, &openSockets, &maxfds, buffer, std::to_string(clientPort));
                         }
                     }
