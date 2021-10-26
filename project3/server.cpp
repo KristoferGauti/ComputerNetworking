@@ -558,6 +558,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
                 }
             }
         }
+        return;
     }
 
     else if (tokens[0].compare("LEAVE") == 0)
