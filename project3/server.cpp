@@ -507,7 +507,10 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         for (auto const &pair : servers)
         {
             Client *client = pair.second;
-            server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ';';
+            if (!client->name.empty() && !client->ipaddr.empty() && !client->portnr.empty())
+            {
+                server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ';';
+            }
         }
     }
 
@@ -850,7 +853,7 @@ int main(int argc, char *argv[])
                 maxfds = std::max(maxfds, serverSock);
 
                 // create a new client to store information.
-                servers[serverSock] = new Client(serverSock, false);
+                servers[serverSock] = new Client(serverSock, true);
 
                 // Decrement the number of sockets waiting to be dealt with
                 n--;
