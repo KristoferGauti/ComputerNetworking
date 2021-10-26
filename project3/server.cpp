@@ -228,32 +228,101 @@ int open_socket(int portno, bool is_server_socket = true)
     return sock;
 }
 
-int establish_connection(std::string port_nr, std::string ip_addr)
+int establish_connection(std::string port_nr, std::string ip_addr, fd_set *openSockets, int *maxfds)
 {
 
-    struct sockaddr_in server_addr;                      //Declare Server Address
-    server_addr.sin_family = AF_INET;                    //IPv4 address family
-    server_addr.sin_addr.s_addr = INADDR_ANY;            //Bind Socket to all available interfaces
-    server_addr.sin_port = htons(atoi(port_nr.c_str())); //Convert the ASCII port number to integer port number
+    struct addrinfo hints, *svr;  // Network host entry for server
+    struct sockaddr_in serv_addr; // Socket address for server
+    int serverSocket;             // Socket used for server
+    int set = 1;                  // Toggle for setsockopt
 
-    //Check for errors for set socket address
-    if (inet_pton(AF_INET, ip_addr.c_str(), &server_addr.sin_addr) <= 0)
+    hints.ai_family = AF_INET; // IPv4 only addresses
+    hints.ai_socktype = SOCK_STREAM;
+
+    memset(&hints, 0, sizeof(hints));
+
+    if (getaddrinfo(ip_addr.c_str(), port_nr.c_str(), &hints, &svr) != 0)
     {
-        printf("\nInvalid address/ Address not supported \n");
-        exit(0);
+        perror("getaddrinfo failed: ");
+        return -1;
     }
 
-    //Create a tcp socket
-    int connection_socket = open_socket(stoi(port_nr), false);
+    struct hostent *server;
+    server = gethostbyname(ip_addr.c_str());
 
-    if (connect(connection_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    bzero((char *)&serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr,
+          (char *)&serv_addr.sin_addr.s_addr,
+          server->h_length);
+    serv_addr.sin_port = htons(atoi(port_nr.c_str()));
+
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+    // Turn on SO_REUSEADDR to allow socket to be quickly reused after
+    // program exit.
+
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
     {
-
-        perror("\nConnection failed");
-        exit(0);
+        printf("Failed to set SO_REUSEADDR for port %s\n", port_nr.c_str());
+        perror("setsockopt failed: ");
+        return -1;
     }
 
-    std::cout << "CONNECTED TO SERVER ON IP: " + ip_addr + ", PORT: " + port_nr << std::endl;
+    int connection_socket = connect(serverSocket, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+
+    if (connection_socket < 0)
+    {
+        // EINPROGRESS means that the connection is still being setup. Typically this
+        // only occurs with non-blocking sockets. (The serverSocket above is explicitly
+        // not in non-blocking mode, so this check here is just an example of how to
+        // handle this properly.)
+        if (errno != EINPROGRESS)
+        {
+            printf("Failed to open socket to server: %s\n", port_nr.c_str());
+            perror("Connect failed: ");
+        }
+        return -1;
+    }
+
+    printf("Server - accept***\n");
+    // Add new client to the list of open sockets
+    FD_SET(serverSocket, openSockets);
+
+    // And update the maximum file descriptor
+    *maxfds = std::max(*maxfds, serverSocket);
+
+    // Listen and print replies from server
+   /* std::thread serverThread(listenServer, serverSocket);
+    finished = false;
+    while (!finished)
+    {
+        // clear buffers
+        bzero(buffer, sizeof(buffer));
+        bzero(newBuffer, sizeof(newBuffer));
+
+        // take input on the buffer
+        fgets(buffer, sizeof(buffer), stdin);
+
+        newBuffer[0] = 0x02;
+        for (std::size_t i = 1; i < strlen(buffer); i++)
+        {
+            newBuffer[i] = buffer[index];
+            index++;
+        }
+        newBuffer[strlen(buffer)] = 0x03;
+
+        index = 0;
+
+        // send and use nwrite to see if there was any reply
+        nwrite = send(serverSocket, newBuffer, strlen(newBuffer), 0);
+
+        if (nwrite == -1)
+        {
+            perror("send() to server failed: ");
+            finished = true;
+        }
+    }*/
 
     return connection_socket;
 }
@@ -444,7 +513,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrfrom, ipAddrfrom);
+            int connection_socket = establish_connection(portnrfrom, ipAddrfrom, openSockets, maxfds);
 
             // Store the connection into the connected_servers
             servers[connection_socket] = new Client(connection_socket, true);
@@ -472,10 +541,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     else if (tokens[0].compare("CONNECT") == 0 && tokens.size() == 3)
     {
 
-        int connection_socket = establish_connection(tokens[2], tokens[1]);
-        servers[connection_socket] = new Client(connection_socket, true);
-        FD_SET(connection_socket, openSockets);
-        *maxfds = std::max(*maxfds, connection_socket);
+        int connection_socket = establish_connection(tokens[2], tokens[1], openSockets, maxfds);
         send_queryservers(connection_socket, std::to_string(5000));
         server_msg = "Sucessfully sent QUERYSERVERS";
     }
@@ -609,7 +675,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
+            int connection_socket = establish_connection(portnrto, ipAddrto, openSockets, maxfds);
 
             if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
             {
@@ -649,7 +715,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
+            int connection_socket = establish_connection(portnrto, ipAddrto, openSockets, maxfds);
 
             if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
             {
@@ -686,7 +752,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
+            int connection_socket = establish_connection(portnrto, ipAddrto, openSockets, maxfds);
 
             if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
             {
@@ -793,13 +859,13 @@ void sendKeepAlive(){
 
 // Sends on QUERYSERVERS on 7:30 minutes interval
 void sendUpdates(std::string port){
-    //std::this_thread::sleep_for(std::chrono::minutes(7));
-    //std::this_thread::sleep_for(std::chrono::seconds (30));
-    sleep(10);
+    std::this_thread::sleep_for(std::chrono::minutes(7));
+    std::this_thread::sleep_for(std::chrono::seconds (30));
+    //sleep(10);
 
 
 
-    for(auto const &pair : stored_servers){
+    for(auto const &pair : servers){
         std::string query = "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' + port;
 
         char send_buffer[query.size()+2];
@@ -811,7 +877,7 @@ void sendUpdates(std::string port){
             perror("Sending message failed");
             break;
         }
-        std::cout << "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' +port << std::endl;
+        std::cout << "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' + port << std::endl;
 
     }
 }
