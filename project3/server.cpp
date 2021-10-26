@@ -751,14 +751,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 		}
 
     }
-    //client command
-    else if ((tokens[0].compare("SEND_MSG") == 0) && tokens.size() == 4)
-    {
-    }
-    //client command
-    else if ((tokens[0].compare("FETCH_MSG") == 0) && tokens.size() == 4)
-    {
-    }
 
     char send_buffer[server_msg.size() + 2];
     construct_message(send_buffer, server_msg);
