@@ -241,30 +241,60 @@ void log_to_file(std::string msg) {
 int establish_connection(std::string port_nr, std::string ip_addr)
 {
 
-    struct sockaddr_in server_addr;                      //Declare Server Address
-    server_addr.sin_family = AF_INET;                    //IPv4 address family
-    server_addr.sin_addr.s_addr = INADDR_ANY;            //Bind Socket to all available interfaces
-    server_addr.sin_port = htons(atoi(port_nr.c_str())); //Convert the ASCII port number to integer port number
 
-    //Check for errors for set socket address
-    if (inet_pton(AF_INET, ip_addr.c_str(), &server_addr.sin_addr) <= 0)
+    struct addrinfo hints, *svr;  // Network host entry for server
+    struct sockaddr_in serv_addr; // Socket address for server
+    int serverSocket;             // Socket used for server
+    int set = 1;                  // Toggle for setsockopt
+
+    hints.ai_family = AF_INET; // IPv4 only addresses
+    hints.ai_socktype = SOCK_STREAM;
+
+    memset(&hints, 0, sizeof(hints));
+
+    if (getaddrinfo(ip_addr.c_str(), port_nr.c_str(), &hints, &svr) != 0)
     {
-        printf("\nInvalid address/ Address not supported \n");
-        exit(0);
+        perror("getaddrinfo failed: ");
+        return -1;
     }
 
-    //Create a tcp socket
-    int connection_socket = open_socket(stoi(port_nr), false);
+    struct hostent *server;
+    server = gethostbyname(ip_addr.c_str());
 
-    if (connect(connection_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    bzero((char *)&serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr,
+          (char *)&serv_addr.sin_addr.s_addr,
+          server->h_length);
+    serv_addr.sin_port = htons(atoi(port_nr.c_str()));
+
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+    // Turn on SO_REUSEADDR to allow socket to be quickly reused after
+    // program exit.
+
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
     {
-
-        perror("\nConnection failed");
-        exit(0);
+        printf("Failed to set SO_REUSEADDR for port %s\n", port_nr.c_str());
+        perror("setsockopt failed: ");
+        return -1;
     }
 
-    std::cout << "CONNECTED TO SERVER ON IP: " + ip_addr + ", PORT: " + port_nr << std::endl;
+    int connection_socket = connect(serverSocket, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
+    if (connection_socket < 0)
+    {
+        // EINPROGRESS means that the connection is still being setup. Typically this
+        // only occurs with non-blocking sockets. (The serverSocket above is explicitly
+        // not in non-blocking mode, so this check here is just an example of how to
+        // handle this properly.)
+        if (errno != EINPROGRESS)
+        {
+            printf("Failed to open socket to server: %s\n", port_nr.c_str());
+            perror("Connect failed: ");
+        }
+        return -1;
+    }
     return connection_socket;
 }
 
