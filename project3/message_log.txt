@@ -1,0 +1,50 @@
+2021-10-26 18:00:08 Client connected on server: 0
+2021-10-26 18:00:35 Client connected on server: 32589
+2021-10-26 18:01:19 SENDING: Sucessfully sent QUERYSERVERSto ip: 130.208.243.61and port: 4001
+2021-10-26 18:02:03 Client connected on server: 32515
+2021-10-26 18:02:09 SENDING: Sucessfully sent QUERYSERVERSto ip: 130.208.243.61and port: 4001
+2021-10-26 18:02:54 Client connected on server: 0
+2021-10-26 18:02:58 SENDING: Sucessfully sent QUERYSERVERS to ip: 130.208.243.61 and port: 4005
+2021-10-26 18:08:00 Client connected on server: 32599
+2021-10-26 18:08:09 Client connected on server: 32665
+2021-10-26 18:08:16 SENDING: Sucessfully sent QUERYSERVERS to ip: 130.208.243.61 and port: 4005
+2021-10-26 18:09:43 Client connected on server: 0
+2021-10-26 18:09:47 SENDING: Sucessfully sent QUERYSERVERS to ip: 130.208.243.61 and port: 4005
+2021-10-26 18:10:56 Client connected on server: 0
+2021-10-26 18:11:06 SENDING: Sucessfully sent QUERYSERVERS to ip: 130.208.243.61 and port: 4005
+2021-10-26 18:12:07 Client connected on server: 32692
+2021-10-26 18:12:11 SENDING: Sucessfully sent QUERYSERVERS to ip: 130.208.243.61 and port: 4005
+2021-10-26 18:12:47 Client connected on server: 0
+2021-10-26 18:12:55 Client connected on server: 0
+2021-10-26 18:12:57 SENDING: Sucessfully sent QUERYSERVERS to ip: 130.208.243.61 and port: 4005
+2021-10-26 18:13:59 Client connected on server: 0
+2021-10-26 18:14:10 Client connected on server: 32600
+2021-10-26 18:14:21 Client connected on server: 32580
+2021-10-26 18:14:27 SENDING: Sucessfully sent QUERYSERVERS to ip: 130.208.243.61 and port: 4005
+2021-10-26 18:17:11 Client connected on server: 0
+2021-10-26 18:17:15 SENDING: Sucessfully sent QUERYSERVERS to ip: 130.208.243.61 and port: 4005
+2021-10-26 18:21:19 Client connected on server: 0
+2021-10-26 18:21:26 SENDING: Sucessfully sent QUERYSERVERS to ip: 130.208.243.61 and port: 4005
+2021-10-26 18:23:14	Client connected on server: 32650
+2021-10-26 18:23:21	SENDING: Sucessfully sent QUERYSERVERS to ip: 130.208.243.61 and port: 4005
+2021-10-26 18:25:05	Client connected on server: 0
+2021-10-26 18:26:24	Client connected on server: 32720
+2021-10-26 18:26:26	SENDING: Sucessfully sent QUERYSERVERS to ip: 130.208.243.61 and port: 4005
+2021-10-26 18:26:43	Client connected on server: 0
+2021-10-26 18:26:45	SENDING: Sucessfully sent QUERYSERVERS to ip: 130.208.243.61 and port: 4005
+2021-10-26 18:40:19	Client connected on server: 5
+2021-10-26 18:40:23	SENDING: Sucessfully sent QUERYSERVERS to group: 130.208.243.61
+2021-10-26 18:40:23	SENDING: SERVERS,P3_GROUP_7,10.3.37.118,4007;,,; to group: NUMBER
+2021-10-26 18:40:23	SENDING:  to group: NUMBER
+2021-10-26 18:40:28	SENDING:  to group: 0
+2021-10-26 18:41:49	Client connected on server: 5
+2021-10-26 18:41:55	SENDING: Sucessfully sent QUERYSERVERS to group: 130.208.243.61
+2021-10-26 18:41:55	SENDING: SERVERS,P3_GROUP_7,10.3.37.118,4007;,,; to group: NUMBER
+2021-10-26 18:41:55	SENDING:  to group: NUMBER
+2021-10-26 18:42:33	SENDING:  to group: 0
+2021-10-26 18:42:49	SENDING: Unknown command: SEND_MSG,NUMBER,P3_GROUP_7,HELLO
+COMMANDS:
+  - QUERYSERVERS
+  - FETCH_MSG,<GROUP_ID>
+  - SEND_MSG,<GROUP_ID>,<MESSAGE> to group: NUMBER
+2021-10-26 18:43:10	SENDING: Message sent to group: NUMBER

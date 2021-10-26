@@ -29,6 +29,7 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 #include <sys/select.h>
+#include <fstream>
 
 //Global variables
 #define CHUNK_SIZE 512
@@ -91,6 +92,8 @@ std::map<std::string, std::vector<std::string>> messages;
 
 // Outgoing messages
 std::map<std::string, std::vector<std::string>> outgoing;
+
+std::ofstream server_log;
 
 bool valid_message(char *buffer)
 {
@@ -217,6 +220,24 @@ int open_socket(int portno, bool is_server_socket = true)
     return sock;
 }
 
+std::string DateTime() {
+    time_t      now = time(0);
+    struct tm   tstruct;
+    char        buf[80];
+    tstruct = *localtime(&now);
+    strftime(buf, sizeof(buf), "%Y-%m-%d %X", &tstruct);
+    return buf;
+}
+
+void log_to_file(std::string msg) {
+    std::string filePath = "./message_log.txt";
+    std::string date = DateTime();
+    std::ofstream ofs(filePath.c_str(), std::ios_base::out | std::ios_base::app);
+    ofs << date << '\t' << msg << '\n';
+    ofs.close();
+
+}
+
 int establish_connection(std::string port_nr, std::string ip_addr)
 {
 
@@ -328,6 +349,8 @@ void split_commas(std::vector<std::string> *servers_info, std::vector<std::strin
 void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
 {
     printf("Client closed connection: %d\n", clientSocket);
+    std::string logger = "Client closed connection on server: " + std::to_string(clientSocket);
+    log_to_file(logger);
 
     close(clientSocket);
 
@@ -367,6 +390,8 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         construct_message(send_buffer, server_msg);
         send(clientSocket, send_buffer, server_msg.size() + 2, 0);
         std::cout << "NOT A VALID MESSAGE" << std::endl;
+        std::string logger = "NOT A VALID MESSAGE";
+        log_to_file(logger);
         return;
     }
 
@@ -468,6 +493,8 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     }
 
     char send_buffer[server_msg.size() + 2];
+    std::string logger = "SENDING: " + server_msg + " to group: " + tokens[1];
+    log_to_file(logger);
     construct_message(send_buffer, server_msg);
     send(clientSocket, send_buffer, server_msg.size() + 2, 0);
 }
@@ -475,7 +502,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 // Process command from client on the server
 void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
 {
-    std::string server_msg = "";
+    std::string server_msg;
 
     if (!valid_message(buffer))
     {
@@ -504,10 +531,10 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
     if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 2)
     {
-
         server_msg = "SERVERS,P3_GROUP_7," + get_local_ip() + ',' + src_port + ';';
         for (auto const &pair : servers)
         {
+
             Client *client = pair.second;
             server_msg += client->name + ',' + client->ipaddr + ',' + client->portnr + ';';
         }
@@ -516,6 +543,8 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     else if (tokens[0].compare("SERVERS") == 0)
     {
         std::cout << "RESPONDING TO: " << message << std::endl;
+        std::string log = tokens[1] + "GETS: " + message;
+        print(log)
 
         std::vector<std::string> servers_info;
 
@@ -532,13 +561,10 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             std::string ip_address = group_IP_portnr_list[i + 1];
             std::string port_number = group_IP_portnr_list[i + 2];
 
-            std::cout << 1 << std::endl;
             int sockfd = open_socket(stoi(port_number), false);
-            std::cout << 2 << std::endl;
-            std::cout << "Name: " << group_id << std::endl;
+            //std::cout << "Name: " << group_id << std::endl;
             if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && (group_id.substr(0, 3) == "P3_" || group_id.substr(0, 3) == "Ins") && port_number.size() == 4)
             {
-                std::cout << 3 << std::endl;
                 if (i == 0)
                 {
                     servers[sockfd] = new Client(sockfd, true);
@@ -753,8 +779,18 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     }
 
     char send_buffer[server_msg.size() + 2];
+    std::string logger;
+
+    logger = "SENDING: " + server_msg + " to group: " + tokens[1];
+    log_to_file(logger);
     construct_message(send_buffer, server_msg);
-    send(serverSocket, send_buffer, server_msg.size() + 2, 0);
+
+    if(send(serverSocket, send_buffer, server_msg.size() + 2, 0) < 0){
+        perror("Message failed to send");
+    }else{
+
+        printf("Message:%s succesfully sent ", server_msg.c_str());
+    }
 }
 
 int main(int argc, char *argv[])
@@ -791,6 +827,8 @@ int main(int argc, char *argv[])
 
     {
         printf("Listen failed on port %s\n", argv[1]);
+        std::string logger = "Listen failed on port: " + std::string(argv[1]);
+        log_to_file(logger);
         exit(0);
     }
     else
@@ -809,6 +847,8 @@ int main(int argc, char *argv[])
     if (listen(client_listen_sock, BACKLOG) < 0)
     {
         printf("Listen failed on port %s\n", argv[1]);
+        std::string logger = "Listen failed on port: " + std::string(argv[1]);
+        log_to_file(logger);
         exit(0);
     }
     else
@@ -834,6 +874,8 @@ int main(int argc, char *argv[])
         if (n < 0)
         {
             perror("select failed - closing down\n");
+            std::string logger = "select failed - closing down";
+            log_to_file(logger);
             finished = true;
         }
         else
@@ -859,6 +901,8 @@ int main(int argc, char *argv[])
                 n--;
 
                 printf("Client connected on server: %d\n", serverSock);
+                std::string logger = "Client connected on server: " + std::to_string(serverSock);
+                log_to_file(logger);
             }
 
             // First, accept  any new connections to the server on the listening socket
@@ -880,6 +924,8 @@ int main(int argc, char *argv[])
                 n--;
 
                 printf("Client connected on server: %d\n", clientSock);
+                std::string logger = "Client connected on server: " + std::to_string(clientSock);
+                log_to_file(logger);
             }
 
             // Now check for commands from clients(the servers that are already connected)
