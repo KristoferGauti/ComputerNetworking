@@ -912,9 +912,11 @@ int main(int argc, char *argv[])
 
     // Setup socket for server to listen to
     server_listen_sock = open_socket(atoi(argv[1]), true);
-    client_listen_sock = open_socket(atoi(argv[1] + 1), true);
+    client_listen_sock = open_socket(atoi(argv[1]) + 1, true);
 
     printf("Server listening on port: %d\n", serverPort);
+    printf("Server listening on port: %d\n", clientPort);
+
 
     if (listen(server_listen_sock, BACKLOG) < 0)
     {
