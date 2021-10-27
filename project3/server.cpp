@@ -877,7 +877,7 @@ void sendKeepAlive(){
                     break;
                 }
                 std::cout << "KEEPALIVE," + std::to_string(storedmessages.size()) << std::endl;
-                logger = "KEEPALIVE," + std::to_string(storedmessages.size());
+                logger = "KEEPALIVE," + std::to_string(storedmessages.size())  + "to group" + servers[pair.first]->name;
                 log_to_file(logger);
                 std::cout << 1 << std::endl;
             }
