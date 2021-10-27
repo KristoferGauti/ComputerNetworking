@@ -508,7 +508,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         tokens.push_back(token);
     }
 
-    if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 2)
+    if ((tokens[0].compare("QUERYSERVERS") == 0) && (tokens.size() == 2 || tokens.size() == 4))
     {
         server_msg = "SERVERS,P3_GROUP_7," + get_local_ip() + "," + src_port + ";";
 
@@ -767,7 +767,7 @@ void sendKeepAlive()
         std::this_thread::sleep_for(std::chrono::minutes(1));
         for (auto const &pair : servers)
         {
-            if (messages.count(pair.second->name) >= 0)
+            if (messages.count(pair.second->name) >= 0 && servers.second->name != "P3_GROUP_7")
             {
                 std::vector<std::string> storedmessages = messages[pair.second->name];
                 std::string keepalive = "KEEPALIVE," + std::to_string(storedmessages.size());
