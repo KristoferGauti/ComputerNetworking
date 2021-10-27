@@ -34,9 +34,12 @@ For the client run:
 The ports are integers and the ip is in the format: xxx.x.x.x and the x's are integers.
 
 ## Additional commands for Wireshark
+We were unable to find the wireshark without using localhost so we used that for client&server.pcapng
+
 To check the file and verify group_21.pcapng:
 > ip.addr == 10.3.16.12 && tcp.port == 4021
 
-To check the file and verify group_ 
+To check the file and verify client&server.pcapng:
+> tcp.port == 43100
 
 ## BONUSES we did

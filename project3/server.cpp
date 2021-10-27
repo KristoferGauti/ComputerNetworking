@@ -429,13 +429,16 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
     if (tokens[0].compare("QUERYSERVERS") == 0 && tokens.size() == 1)
     {
-        for (auto const &pair : servers)
+        if(!servers.empty()){
+            for (auto const &pair : servers)
 
-        {
-            Client *client = pair.second;
-            server_msg += client->name + ",";
+            {
+                Client *client = pair.second;
+                server_msg += client->name + ",";
+            }
+            server_msg.pop_back();
         }
-        server_msg.pop_back();
+
         if (server_msg == "")
         {
             server_msg = "No connected servers";
@@ -480,7 +483,8 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             std::string portnrfrom = connections[tokens[1]]->portnr;
             //int sockfrom = connections[tokens[1]]->sock;
 
-            std::string message = tokens[3];
+
+            server_msg = "SEND_MSG," + tokens[1] + ',' + tokens[2];
 
             char send_buffer[message.size() + 2];
 
@@ -492,6 +496,9 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             servers[connection_socket]->name = namefrom;
             servers[connection_socket]->ipaddr = ipAddrfrom;
             servers[connection_socket]->portnr = portnrfrom;
+
+            std::string logger = "SENDING: " + server_msg + " to group: " + tokens[1];
+            log_to_file(logger);
 
             if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
                 perror("Unable to send");
@@ -564,7 +571,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     std::string message = std::string(buffer);
     message.erase(0, 1);
     message.erase(message.size() - 1);
-    std::cout << "The message we got: " << message << std::endl;
+    //std::cout << "The message we got: " << message << std::endl;
     logger = "The message we got back: " + message;
     log_to_file(logger);
 
@@ -653,7 +660,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     else if (tokens[0].compare("KEEPALIVE") == 0)
     {
         // some KEEPALIVE stuff
-        std::cout << "I am a message from KEEPALIVE" << std::endl;
+        //std::cout << "I am a message from KEEPALIVE" << std::endl;
         // next three comments are for the periodically KEEPALIVE that our server sends
         // use threads to wait a minute
         // check if we have some message stored for a server
@@ -871,6 +878,7 @@ void sendKeepAlive(){
                 std::cout << "KEEPALIVE," + std::to_string(storedmessages.size()) << std::endl;
                 logger = "KEEPALIVE," + std::to_string(storedmessages.size());
                 log_to_file(logger);
+                std::cout << 1 << std::endl;
             }
             //std::cout << "KEEPALIVE," + std::to_string(storedmessages.size()) << std::endl;
         }
@@ -881,15 +889,15 @@ void sendKeepAlive(){
 
 // Sends on QUERYSERVERS on 7:30 minutes interval
 void sendUpdates(std::string port){
-    //std::this_thread::sleep_for(std::chrono::minutes(7));
-    //std::this_thread::sleep_for(std::chrono::seconds (30));
-    sleep(10);
+    std::this_thread::sleep_for(std::chrono::minutes(7));
+    std::this_thread::sleep_for(std::chrono::seconds (30));
+    //sleep(10);
 
 
 
         for (auto const &pair : servers)
     {
-        std::string query = "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' + port;
+        std::string query = "QUERYSERVERS," + std::string(GROUP) + ',' + get_local_ip() + ',' + port;
 
         char send_buffer[query.size() + 2];
 
@@ -899,8 +907,10 @@ void sendUpdates(std::string port){
         {
             perror("Sending message failed");
             break;
+        } else{
+            printf("Message succesful: %s", query.c_str());
         }
-        std::cout << "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' + port << std::endl;
+        std::cout << "QUERYSERVERS," + std::string(GROUP) + ',' + get_local_ip() + ',' + port << std::endl;
     }
 }
 
