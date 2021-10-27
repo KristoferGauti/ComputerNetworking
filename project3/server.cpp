@@ -154,8 +154,7 @@ std::string get_local_ip()
         }
         else
         {
-            if ((std::string)ifa->ifa_name == "en0" || (std::string)ifa->ifa_name == "wlp1s0")
-            {
+            if ((std::string)ifa->ifa_name == "en0" || (std::string)ifa->ifa_name == "wlp1s0" || (std::string)ifa->ifa_name == "ens192")            {
                 if (std::string(buf).find('.') != std::string::npos)
                 {
                     return (std::string)buf;
@@ -228,9 +227,9 @@ int open_socket(int portno, bool is_server_socket = true)
 int establish_connection(std::string port_nr, std::string ip_addr)
 {
 
-    struct sockaddr_in server_addr;						 //Declare Server Address
-    server_addr.sin_family = AF_INET;					 //IPv4 address family
-    server_addr.sin_addr.s_addr = INADDR_ANY;			 //Bind Socket to all available interfaces
+    struct sockaddr_in server_addr;                      //Declare Server Address
+    server_addr.sin_family = AF_INET;                    //IPv4 address family
+    server_addr.sin_addr.s_addr = INADDR_ANY;            //Bind Socket to all available interfaces
     server_addr.sin_port = htons(atoi(port_nr.c_str())); //Convert the ASCII port number to integer port number
 
     //Check for errors for set socket address
@@ -241,14 +240,17 @@ int establish_connection(std::string port_nr, std::string ip_addr)
     }
 
     //Create a tcp socket
-    int connection_socket = open_socket(stoi(port_nr), true);
+    int connection_socket = open_socket(stoi(port_nr), false);
 
     if (connect(connection_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
+
         perror("\nConnection failed");
         exit(0);
     }
-    printf("Connection successful!\n");
+
+    std::cout << "CONNECTED TO SERVER ON IP: " + ip_addr + ", PORT: " + port_nr << std::endl;
+
     return connection_socket;
 }
 /*
@@ -531,53 +533,98 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 // Process command from client on the server
 void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
 {
-    // Initialize the command
+    std::string server_msg = "";
+
+    if (!valid_message(buffer))
+    {
+        server_msg = "You are nothing but a scam";
+        char send_buffer[server_msg.size() + 2];
+        construct_message(send_buffer, server_msg);
+        send(serverSocket, send_buffer, server_msg.size() + 2, 0);
+        std::cout << "NOT A VALID MESSAGE" << std::endl;
+        return;
+    }
+
     std::string message = std::string(buffer);
     message.erase(0, 1);
     message.erase(message.size() - 1);
+
+    if (!message.empty())
+    {
+        std::cout << "The message we got: " << message << std::endl;
+    }
 
     std::vector<std::string> tokens;
     std::string token;
     std::stringstream ss(message);
 
-    // Split the string on ,
     while (ss.good())
     {
         getline(ss, token, ',');
         tokens.push_back(token);
     }
 
-    std::string server_msg;
-
-    if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 4)
+ if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 2)
     {
-        server_msg = "SERVERS,";
-        // store information about client
-        connected_servers[serverSocket] = clients[serverSocket];
-        clients.erase(serverSocket);
+        server_msg = "SERVERS,P3_GROUP_7," + get_local_ip() + "," + src_port + ";";
 
-        // Create an instance of a server that is connected to us
-        connected_servers[serverSocket]->name = tokens[1];
-        connected_servers[serverSocket]->ipaddr = tokens[2];
-        connected_servers[serverSocket]->portnr = tokens[3];
-
-        // Go through all stored servers and add them to the message
-        for (auto const &pair : clients)
+        for (auto const &pair : servers)
         {
             Client *client = pair.second;
-            server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ';';
+            if (!client->name.empty() && !client->ipaddr.empty() && !client->portnr.empty())
+            {
+                server_msg += client->name + "," + client->ipaddr + "," + client->portnr + ';';
+            }
         }
+    }
+    else if (tokens[0].compare("SERVERS") == 0)
+    {
 
-        char sendBuffer[server_msg.size() + 2];
+        std::vector<std::string> servers_info;
 
-        construct_message(sendBuffer, message);
+        server_vector(message, &servers_info);
 
-        if (send(serverSocket, sendBuffer, server_msg.size() + 2, 0) < 0)
+        std::vector<std::string> group_IP_portnr_list;
+
+        split_commas(&servers_info, &group_IP_portnr_list);
+
+        for (int i = 0; i < group_IP_portnr_list.size(); i += 3)
         {
-            perror("Sending message failed");
-        }
+            std::string group_id = group_IP_portnr_list[i];
+            std::string ip_address = group_IP_portnr_list[i + 1];
+            std::string port_number = group_IP_portnr_list[i + 2];
 
-        //send(serverSocket, sendBuffer, server_msg.length() + 2, 0);
+            int sockfd = open_socket(stoi(port_number), false);
+
+            if (stoi(port_number) != -1 && group_id != "P3_GROUP_7" && port_number.size() == 4)
+            {
+
+                if (i == 0)
+                {
+                    servers[serverSocket]->name = group_id;
+                    servers[serverSocket]->ipaddr = ip_address;
+                    servers[serverSocket]->portnr = port_number;
+                }
+                else
+                {
+                    if (!isStored(group_id, stored_names))
+                    {
+                        stored_servers[sockfd] = new Client(sockfd, true);
+                        stored_servers[sockfd]->name = group_id;
+                        stored_servers[sockfd]->ipaddr = ip_address;
+                        stored_servers[sockfd]->portnr = port_number;
+
+                        connections[group_id] = new Client(sockfd, true);
+                        connections[group_id]->name = group_id;
+                        connections[group_id]->ipaddr = ip_address;
+                        connections[group_id]->portnr = port_number;
+
+                        stored_names.push_back(group_id);
+                    }
+                }
+            }
+        }
+        return;
     }
     else if (tokens[0].compare("LEAVE") == 0)
     {
@@ -589,29 +636,23 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
     else if (tokens[0].compare("KEEPALIVE") == 0)
     {
-        // some KEEPALIVE stuff
-        std::cout << "I am a message from KEEPALIVE" << std::endl;
-
 
         int count = stoi(tokens[1]);
         // check if the message that we got from another server has any message for us
+        if (count > 0)
+        {
 
-        if(count > 0){
-            // initialize variables so that we can send FETCH_MSGS to the server that sent to us a KEEPALIVE message
-            std::string nameto = clients[serverSocket]->name;
-            std::string ipAddrto = clients[serverSocket]->ipaddr;
-            std::string portnrto = clients[serverSocket]->portnr;
             // initialize the message variable with a global variable that has the value "P3_GROUP_7"
-            std::string message = std::string("FETCH_MSGS,") + std::string(GROUP);
+            std::string message = "FETCH_MSGS,P3_GROUP_7";
             char send_buffer[message.size() + 2];
-
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
 
-            if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
+            if (send(serverSocket, send_buffer, message.size() + 2, 0) < 0)
+            {
                 perror("Unable to send");
             }
-            else{
+            else
+            {
                 printf("Message: %s sent successfully", message.c_str());
             }
         }
@@ -624,11 +665,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
         // get group number
         std::string group = tokens[1];
-        // find the relevant group from connections using the given group id
-        std::string nameto = stored_servers[group]->name;
-        std::string ipAddrto = stored_servers[group]->ipaddr;
-        std::string portnrto = stored_servers[group]->portnr;
-        int sockto = stored_servers[group]->sock;
 
         // check if messages contains this group as key
         if (messages.find(group) != messages.end())
@@ -637,20 +673,23 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
             //std::vector<std::string> requested_messages = messages[group];
             std::string message;
             // go through each message in messages and append it to the message string
-            for (auto const &data: messages[group])
+            for (auto const &data : messages[group])
             {
-                message += ',' + data;
+                message += data + ',';
             }
+
+            message.pop_back();
             // create a char array with the size of the message + STX and ETX
             char send_buffer[message.size() + 2];
 
             construct_message(send_buffer, message);
-            //int connection_socket = establish_connection(portnrto, ipAddrto);
 
-            if(send(serverSocket, send_buffer, message.size()+2, 0) < 0){
+            if (send(serverSocket, send_buffer, message.size() + 2, 0) < 0)
+            {
                 perror("Unable to send");
             }
-            else{
+            else
+            {
                 // print the message if successful in sending it to the receiver
                 printf("Message: %s sent succesfully", message.c_str());
             }
@@ -667,66 +706,100 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
         std::cout << "I am a message from SEND_MSG" << std::endl;
         // initialize variables so that we can send the message that the one server has for the other or if we don't have it stored, caching it
-        std::string nameto = stored_servers[tokens[1]]->name;
-        std::string ipAddrto = stored_servers[tokens[1]]->ipaddr;
-        std::string portnrto = stored_servers[tokens[1]]->portnr;
-
-        // the message that we received
-        std::string message = tokens[3];
 
         // check if we are connected or have their information stored in connection map
-        if ( stored_servers.find(tokens[1]) != stored_servers.end() ) {
-            // found
-            // send the msg content tokens[3]
-            int sockto = stored_servers[tokens[1]]->sock;
+        if (connections.find(tokens[1]) != connections.end())
+        {
+
+            std::string nameto = connections[tokens[1]]->name;
+            std::string ipAddrto = connections[tokens[1]]->ipaddr;
+            std::string portnrto = connections[tokens[1]]->portnr;
+            int socket = connections[tokens[1]]->sock;
+
+            // the message that we received
+            std::string message = tokens[3];
 
             char send_buffer[message.size() + 2];
-
             construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
 
-            if(send(connection_socket, send_buffer, message.size()+2, 0) < 0){
+            if (send(socket, send_buffer, message.size() + 2, 0) < 0)
+            {
                 perror("Unable to send");
             }
-            else{
+            else
+            {
                 printf("Message: %s sent succesfully", message.c_str());
             }
-        // if we have not connected to the receiving then we have to cache it and wait for when someone fetches the message
-        } else {
+        }
+        else
+        { // if we have not connected to the receiving then we have to cache it and wait for when someone fetches the message
             // not found
             // cache the message and wait until someone fetches the message
             std::vector<std::string> storedMessage;
             storedMessage.push_back(message);
 
-            messages.insert({nameto, storedMessage});
+            messages.insert({tokens[1], storedMessage});
             //messages[tokens[1]] = message.push_back(tokens[4]);
         }
     }
     // Responds with the amount of messages we have for each group that we have reached a message for
-    else if (tokens[0].compare("STATUSREQ") == 0)
+   else if (tokens[0].compare("STATUSREQ") == 0)
     {
         // some STATUSREQ stuff
         std::cout << "I am a message from STATUSREQ" << std::endl;
 
-		std::string response = "STATUSRESP,P3_GROUP_7," + connected_servers[serverSocket]->name + ","; //connected_servers
-		for (auto const &msg_pair : messages) {
-			if (msg_pair.second.size() == 0) {
-				continue;
-			}
-			response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ",";			
-		}
-		char send_buffer[response.size() + 2];
-		construct_message(send_buffer, response);
+        std::string response = "STATUSRESP,P3_GROUP_7," + servers[serverSocket]->name + ",";
+        for (auto const &msg_pair : messages)
+        {
+            if (msg_pair.second.size() == 0)
+            {
+                continue;
+            }
+            response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ",";
+        }
+        char send_buffer[response.size() + 2];
 
-		if (send(serverSocket, send_buffer, response.size()+2, 0) < 0) {
-			perror("Sending STATUSREQ failed!");
-		}
+        if (!response.empty())
+        {
+            response.pop_back();
+        }
+
+        construct_message(send_buffer, response);
+
+        if (send(serverSocket, send_buffer, response.size() + 2, 0) < 0)
+        {
+            perror("Sending STATUSREQ failed!");
+        }
     }
     // Responds with the amount of messages we have for each group that we have reached a message for
     else if (tokens[0].compare("STATUSRESP") == 0)
     {
         // some STATUSRESP stuff
         std::cout << "I am a message from STATUSRESP" << std::endl;
+
+        std::string response = "STATUSRESP,P3_GROUP_7," + servers[serverSocket]->name + ",";
+
+        for (auto const &msg_pair : messages)
+        {
+            if (msg_pair.second.size() == 0)
+            {
+                continue;
+            }
+            response += msg_pair.first + "," + std::to_string(msg_pair.second.size()) + ",";
+        }
+        char send_buffer[response.size() + 2];
+
+        if (!response.empty())
+        {
+            response.pop_back();
+        }
+
+        construct_message(send_buffer, response);
+
+        if (send(serverSocket, send_buffer, response.size() + 2, 0) < 0)
+        {
+            perror("Sending STATUSRESP failed!");
+        }
     }
 }
 
@@ -737,31 +810,31 @@ void sendKeepAlive(){
     // check if we have some message stored for a server
     // send to the server KEEPALIVE,how many messages
 
-    //std::this_thread::sleep_for(std::chrono::minutes(2));
-    //std::this_thread::sleep_for(std::chrono::seconds (30));
-    sleep(10);
-
-    while(true){
-
-        for(auto const &pair : connected_servers){
-            if(messages.count(pair.second->name) >= 0){
+    std::this_thread::sleep_for(std::chrono::minutes(2));
+    std::this_thread::sleep_for(std::chrono::seconds (30));
+    while (!FINISHED)
+    {
+        std::this_thread::sleep_for(std::chrono::minutes(1));
+        for (auto const &pair : servers)
+        {
+            if (messages.count(pair.second->name) >= 0)
+            {
                 std::vector<std::string> storedmessages = messages[pair.second->name];
                 std::string keepalive = "KEEPALIVE," + std::to_string(storedmessages.size());
-                std::cout << "Inside KeepAlive" << '\n';
 
-                char send_buffer[keepalive.size()+2];
-
+                char send_buffer[keepalive.size() + 2];
                 construct_message(send_buffer, keepalive);
-
                 if (send(pair.second->sock, send_buffer, keepalive.length() + 2, 0) < 0)
                 {
                     perror("Sending message failed");
+                    break;
                 }
-                std::cout << "KEEPALIVE," + std::to_string(storedmessages.size()) << std::endl;
             }
         }
     }
 }
+
+
 
 // Sends on QUERYSERVERS on 7:30 minutes interval
 void sendUpdates(std::string port){
@@ -772,32 +845,38 @@ void sendUpdates(std::string port){
 
     while(true){
 
-        for(auto const &pair : stored_servers){
-            std::string query = "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' + port;
+        for (auto const &pair : servers)
+    {
+        std::string query = "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' + port;
 
-            char send_buffer[query.size()+2];
+        char send_buffer[query.size() + 2];
 
-            construct_message(send_buffer, query);
+        construct_message(send_buffer, query);
 
-            if (send(pair.second->sock, send_buffer, query.length() + 2, 0) < 0)
-            {
-                perror("Sending message failed");
-            }
-            std::cout << "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' +port << std::endl;
-
+        if (send(pair.second->sock, send_buffer, query.length() + 2, 0) < 0)
+        {
+            perror("Sending message failed");
+            break;
         }
+        std::cout << "QUERYSERVERS," + std::string(GROUP) + get_local_ip() + ',' + port << std::endl;
     }
 }
 
 int main(int argc, char *argv[])
 {
-    bool finished;
-    int listenSock;       // Socket to listen
+    
+ bool FINISHED;
+    int server_listen_sock;
+    int client_listen_sock;
     int serverSock;
-    fd_set openSockets;	  // Current open sockets
-    fd_set readSockets;	  // Socket list for select()
+    int clientSock;
+    int clientPort;
+    int serverPort;
+
+    fd_set openSockets;   // Current open sockets
+    fd_set readSockets;   // Socket list for select()
     fd_set exceptSockets; // Exception socket list
-    int maxfds;			  // Passed to select() as max fd in set
+    int maxfds;           // Passed to select() as max fd in set
     struct sockaddr_in client;
     socklen_t clientLen;
     char buffer[1025]; // buffer for reading from clients
@@ -808,11 +887,14 @@ int main(int argc, char *argv[])
         exit(0);
     }
 
-    // Setup socket for server to listen to
-    listenSock = open_socket(atoi(argv[1]), true);
-    printf("Listening on port: %d\n", atoi(argv[1]));
+    serverPort = atoi(argv[1]);
 
-    if (listen(listenSock, BACKLOG) < 0)
+    // Setup socket for server to listen to
+    server_listen_sock = open_socket(atoi(argv[1]), true);
+    printf("Server listening on port: %d\n", serverPort);
+
+    if (listen(server_listen_sock, BACKLOG) < 0)
+
     {
         printf("Listen failed on port %s\n", argv[1]);
         exit(0);
@@ -820,20 +902,35 @@ int main(int argc, char *argv[])
     else
     {
         // Add listen socket to socket set we are monitoring
-        // Enables the listenSock to enter "loops" where it listens for events
-        FD_SET(listenSock, &openSockets);
-        maxfds = listenSock;
+        // Enables the server_listen_sock to enter "loops" where it listens for events
+        FD_SET(server_listen_sock, &openSockets);
+        maxfds = server_listen_sock;
     }
 
-    finished = false;
+    clientPort = serverPort + 1;
 
-    // Periodically call KEEPALIVE and QUERYSERVERS to connected_servers
-    std::thread keepAlive_thread(sendKeepAlive);
+    client_listen_sock = open_socket(atoi(argv[1]) + 1, true);
+    printf("Client listening on port: %d\n", clientPort);
+
+    if (listen(client_listen_sock, BACKLOG) < 0)
+    {
+        printf("Listen failed on port %s\n", argv[1]);
+        exit(0);
+    }
+    else
+    {
+        // Add listen socket to socket set we are monitoring
+        // Enables the server_listen_sock to enter "loops" where it listens for events
+        FD_SET(client_listen_sock, &openSockets);
+        maxfds = client_listen_sock;
+    }
+
+    FINISHED = false;
+    std::thread keepAlive(sendKeepAlive);
     std::string port = std::string(argv[1]);
-    std::thread updates_thread(sendUpdates, std::ref(port));
+    std::thread Updates(sendUpdates, port);
 
-
-    while (!finished)
+    while (!FINISHED)
     {
         // Get modifiable copy of readSockets
         readSockets = exceptSockets = openSockets;
@@ -846,16 +943,16 @@ int main(int argc, char *argv[])
         if (n < 0)
         {
             perror("select failed - closing down\n");
-            finished = true;
+            FINISHED = true;
         }
         else
         {
-            // Events ongoing
 
             // First, accept  any new connections to the server on the listening socket
-            if (FD_ISSET(listenSock, &readSockets))
+            if (FD_ISSET(server_listen_sock, &readSockets))
             {
-                serverSock = accept(listenSock, (struct sockaddr *)&client,
+                serverSock = accept(server_listen_sock, (struct sockaddr *)&client,
+
                                     &clientLen);
                 printf("accept***\n");
                 // Add new client to the list of open sockets
@@ -865,21 +962,44 @@ int main(int argc, char *argv[])
                 maxfds = std::max(maxfds, serverSock);
 
                 // create a new client to store information.
-                clients[serverSock] = new Client(serverSock, true);
+                servers[serverSock] = new Client(serverSock, true);
 
                 // Decrement the number of sockets waiting to be dealt with
                 n--;
 
                 printf("Client connected on server: %d\n", serverSock);
             }
+
+            // First, accept  any new connections to the server on the listening socket
+            if (FD_ISSET(client_listen_sock, &readSockets))
+            {
+                clientSock = accept(client_listen_sock, (struct sockaddr *)&client,
+                                    &clientLen);
+                printf("accept***\n");
+                // Add new client to the list of open sockets
+                FD_SET(clientSock, &openSockets);
+
+                // And update the maximum file descriptor
+                maxfds = std::max(maxfds, clientSock);
+
+                // create a new client to store information.
+                clients[clientSock] = new Client(clientSock, true);
+
+                // Decrement the number of sockets waiting to be dealt with
+                n--;
+
+                printf("Client connected on server: %d\n", clientSock);
+            }
+
             // Now check for commands from clients(the servers that are already connected)
             std::list<Client *> disconnectedClients;
 
             while (n-- > 0)
             {
-                // CLIENTS OR UNKNOWN SERVERS
-                // Go through all the clients that we have a connection to and check if they have sent us some command
-                for (auto const &pair : clients)
+
+                // SERVERS
+                for (auto const &pair : servers)
+
                 {
                     Client *client = pair.second;
 
@@ -896,42 +1016,42 @@ int main(int argc, char *argv[])
                         // only triggers if there is something on the socket for us.
                         if (valid_message(buffer))
                         {
-                            clientCommand(client->sock, &openSockets, &maxfds, buffer, (std::string)argv[1]);
+                            serverCommand(client->sock, &openSockets, &maxfds, buffer, std::to_string(serverPort));
+                        }
+                    }
+                    // Remove client from the servers list
+                    for (auto const &c : disconnectedClients)
+                        servers.erase(c->sock);
+                }
+                // CLIENTS
+                for (auto const &pair : clients)
+
+                {
+                    Client *client = pair.second;
+
+                    if (FD_ISSET(client->sock, &readSockets))
+                    {
+                        // recv() == 0 means client has closed connection
+                        if (recv(client->sock, buffer, sizeof(buffer), MSG_DONTWAIT) == 0)
+                        {
+                            disconnectedClients.push_back(client);
+                            closeClient(client->sock, &openSockets, &maxfds);
+                            break;
+                        }
+                        // We don't check for -1 (nothing received) because select()
+                        // only triggers if there is something on the socket for us.
+                        if (valid_message(buffer))
+                        {
+                            clientCommand(client->sock, &openSockets, &maxfds, buffer, std::to_string(clientPort));
                         }
                     }
                     // Remove client from the clients list
                     for (auto const &c : disconnectedClients)
                         clients.erase(c->sock);
                 }
-                // SERVERS
-                // Go through all the servers that we have a connection to and check if they have sent us some command
-                for (auto const &pair : connected_servers)
-                {
-                    Client *client = pair.second;
-
-                    if (FD_ISSET(client->sock, &readSockets))
-                    {
-                        // recv() == 0 means client has closed connection
-                        if (recv(client->sock, buffer, sizeof(buffer), MSG_DONTWAIT) == 0)
-                        {
-                            disconnectedClients.push_back(client);
-                            closeClient(client->sock, &openSockets, &maxfds);
-                            break;
-                        }
-                        // We don't check for -1 (nothing received) because select()
-                        // only triggers if there is something on the socket for us.
-                        if (valid_message(buffer))
-                        {
-                            serverCommand(client->sock, &openSockets, &maxfds, buffer, (std::string)argv[1]);
-                        }
-                    }
-                    // Remove client from the servers list
-                    for (auto const &c : disconnectedClients)
-                        connected_servers.erase(c->sock);
-                }
             }
         }
     }
-    keepAlive_thread.join();
-    updates_thread.join();
+    keepAlive.join();
+    Updates.join();
 }
