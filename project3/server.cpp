@@ -507,7 +507,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         }
     }
 
-    else if (tokens[0].compare("CONNECT") == 0 && tokens.size() == 3)
+    else if (tokens[0].compare("CONNECT") == 0 && tokens.size() == 4)
     {
 
         int connection_socket = establish_connection(tokens[2], tokens[1]);
