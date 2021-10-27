@@ -331,6 +331,7 @@ void send_queryservers(int connection_socket)
     if (send(connection_socket, sendBuffer, message.length() + 2, 0) < 0)
     {
         perror("Sending message failed sendqueryservers");
+        return;
     }
 }
 
