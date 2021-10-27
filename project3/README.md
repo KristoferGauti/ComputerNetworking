@@ -42,4 +42,11 @@ To check the file and verify group_21.pcapng:
 To check the file and verify client&server.pcapng:
 > tcp.port == 43100
 
+## Groups that we sent or receievd from
+P3_Group_46
+PE_GROUP_38
+Instr_1
+Instr_2 
+P3_GROUP_64
+
 ## BONUSES we did
