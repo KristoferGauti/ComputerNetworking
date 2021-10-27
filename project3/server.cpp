@@ -905,7 +905,7 @@ void sendUpdates(std::string port){
 int main(int argc, char *argv[])
 {
     
- bool FINISHED;
+    bool FINISHED;
     int server_listen_sock;
     int client_listen_sock;
     int serverSock;
