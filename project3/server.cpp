@@ -312,7 +312,7 @@ void send_queryservers(int connection_socket, std::string src_port)
     construct_message(sendBuffer, message);
     if (send(connection_socket, sendBuffer, message.length() + 2, 0) < 0)
     {
-        perror("Sending message failed");
+        perror("Sending message failed sendqueryservers");
     }
 }
 
@@ -877,7 +877,7 @@ void sendKeepAlive(){
                     char send_buffer[keepalive.size() + 2];
                     construct_message(send_buffer, keepalive);
                     if (send(pair.second->sock, send_buffer, keepalive.length() + 2, 0) < 0) {
-                        perror("Sending message failed");
+                        perror("Sending message failed sendKeepAlive");
                         break;
                     }
                     std::cout << "KEEPALIVE," + std::to_string(storedmessages.size()) << std::endl;
@@ -913,7 +913,7 @@ void sendUpdates(std::string port){
                 construct_message(send_buffer, query);
 
                 if (send(pair.second->sock, send_buffer, query.length() + 2, 0) < 0) {
-                    perror("Sending message failed");
+                    perror("Sending message failed sendUpdates");
                     break;
                 } else {
                     printf("Message succesful: %s", query.c_str());
@@ -1034,9 +1034,9 @@ int main(int argc, char *argv[])
                     printf("Client connected on server: %d\n", serverSock);
                 }
                 else{
-                    remSocket = server_queue.front();
+                    int remSocket = server_queue.front();
                     server_queue.pop();
-                    closeClient(remSocket, openSockets, maxfds)
+                    closeClient(remSocket, &openSockets, &maxfds);
                 }
             }
 
