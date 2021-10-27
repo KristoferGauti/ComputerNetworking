@@ -391,10 +391,12 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
     printf("Client closed connection: %d\n", clientSocket);
     std::string logger = "Client closed connection on server: " + std::to_string(clientSocket);
     log_to_file(logger);
-    if(clients.count(clientSocket) > 0){
+    if (clients.count(clientSocket) > 0)
+    {
         clients.erase(clientSocket);
-
-    }else{
+    }
+    else
+    {
         servers.erase(clientSocket);
     }
     close(clientSocket);
@@ -647,7 +649,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         }
     }
 
-    else if (tokens[0].compare("CONNECT") == 0 && tokens.size() == 3)
+    else if (tokens[0].compare("CONNECT") == 0 && tokens.size() == 4)
     {
 
         int connection_socket = establish_connection(tokens[2], tokens[1]);
@@ -673,7 +675,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     }
     else
     {
-        server_msg = "Unknown command: " + message + "\n" + "COMMANDS:\n" + "  - QUERYSERVERS\n" + "  - FETCH_MSG,<GROUP_ID>\n" + "  - SEND_MSG,<GROUP_ID>,<MESSAGE>\n" + "  - STORED\n" + "  - CONNECT,<ip address>,<port number>";
+        server_msg = "Unknown command: " + message + "\n" + "COMMANDS:\n" + "  - QUERYSERVERS\n" + "  - FETCH_MSG,<GROUP_ID>\n" + "  - SEND_MSG,<GROUP_ID>,<MESSAGE>\n" + "  - STORED\n" + "  - CONNECT,<ip address>,<port number>,<group id>";
     }
 
     char send_buffer[server_msg.size() + 2];
