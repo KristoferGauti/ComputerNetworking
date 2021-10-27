@@ -56,6 +56,7 @@ public:
     std::string name; // Limit length of name of client's user
     std::string ipaddr;
     std::string portnr;
+    bool sent;
     bool isServer;
 
     Client(int socket, bool server)
@@ -739,9 +740,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
         std::cout << "I am a message from SEND_MSG" << std::endl;
         // initialize variables so that we can send the message that the one server has for the other or if we don't have it stored, caching it
-        std::string nameto = connections[tokens[1]]->name;
-        std::string ipAddrto = connections[tokens[1]]->ipaddr;
-        std::string portnrto = connections[tokens[1]]->portnr;
 
         // the message that we received
         std::string message = tokens[3];
@@ -749,28 +747,30 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         // check if we are connected or have their information stored in connection map
         if (connections.find(tokens[1]) != connections.end())
         {
+            if(connections[tokens[1]]->sent){
+                std::string nameto = connections[tokens[1]]->name;
+                std::string ipAddrto = connections[tokens[1]]->ipaddr;
+                std::string portnrto = connections[tokens[1]]->portnr;
+                int socket = connections[tokens[1]]->sock;
 
-            std::string nameto = connections[tokens[1]]->name;
-            std::string ipAddrto = connections[tokens[1]]->ipaddr;
-            std::string portnrto = connections[tokens[1]]->portnr;
-            int socket = connections[tokens[1]]->sock;
+                // the message that we received
+                std::string message = tokens[3];
 
-            // the message that we received
-            std::string message = tokens[3];
+                char send_buffer[message.size() + 2];
+                construct_message(send_buffer, message);
+                int connection_socket = establish_connection(portnrto, ipAddrto);
 
-            char send_buffer[message.size() + 2];
-            construct_message(send_buffer, message);
-            int connection_socket = establish_connection(portnrto, ipAddrto);
-
-            if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
-            {
-                perror("Unable to send");
-            }
-            else
-            {
-                printf("Message: %s sent succesfully", message.c_str());
+                if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
+                {
+                    perror("Unable to send");
+                }
+                else
+                {
+                    printf("Message: %s sent succesfully", message.c_str());
+                }
             }
         }
+
         else
         { // if we have not connected to the receiving then we have to cache it and wait for when someone fetches the message
             // not found
