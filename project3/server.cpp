@@ -370,7 +370,12 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
     printf("Client closed connection: %d\n", clientSocket);
     std::string logger = "Client closed connection on server: " + std::to_string(clientSocket);
     log_to_file(logger);
+    if(clients.count(clientSocket) > 0){
+        clients.erase(clientSocket);
 
+    }else{
+        servers.erase(clientSocket);
+    }
     close(clientSocket);
 
     if (*maxfds == clientSocket)
@@ -378,6 +383,10 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
         for (auto const &p : clients)
         {
             *maxfds = std::max(*maxfds, p.second->sock);
+        }
+        for (auto const &s : servers)
+        {
+            *maxfds = std::max(*maxfds, s.second->sock);
         }
     }
 
@@ -1030,7 +1039,6 @@ int main(int argc, char *argv[])
                     n--;
 
                     server_queue.push(serverSock);
-
                     printf("Client connected on server: %d\n", serverSock);
                 }
                 else{
