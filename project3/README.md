@@ -79,4 +79,7 @@ P3_GROUP_26
 P3_GROUP57
 
 We connected our server outside of skel as is evident by the file:
-NATServer.pcapng
+NATServer.pcapng with the filter:
+> ip.addr == 153.92.153.173 || ip.addr == 130.208.243.61 || tcp 
+
+on line 1196 is the message that we sent the server

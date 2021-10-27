@@ -729,7 +729,17 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     if ((tokens[0].compare("QUERYSERVERS") == 0) && (tokens.size() == 2 || tokens.size() == 4))
     {
         server_msg = "SERVERS,P3_GROUP_7," + get_local_ip() + "," + src_port + ";";
-
+        if (tokens.size() == 4){
+            std::string msg = "QUERYSERVERS,P3_GROUP_7," + get_local_ip() + "," + src_port;
+            char sendBuffer[msg.size() + 2];
+            construct_message(sendBuffer, msg);
+            int connection_socket = establish_connection(get_local_ip(), src_port);
+            if (send(connection_socket, sendBuffer, msg.length() + 2, 0) < 0)
+            {
+                perror("Sending message failed sendqueryservers");
+                return;
+            }
+        }
         for (auto const &pair : servers)
         {
             Client *client = pair.second;
@@ -772,6 +782,11 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
                     servers[sockfd]->name = group_id;
                     servers[sockfd]->ipaddr = ip_address;
                     servers[sockfd]->portnr = port_number;
+
+                    connections[group_id] = new Client(sockfd, true);
+                    connections[group_id]->name = group_id;
+                    connections[group_id]->ipaddr = ip_address;
+                    connections[group_id]->portnr = port_number;
                 }
                 else
                 {
@@ -779,6 +794,11 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
                     stored_servers[sockfd]->name = group_id;
                     stored_servers[sockfd]->ipaddr = ip_address;
                     stored_servers[sockfd]->portnr = port_number;
+
+                    connections[group_id] = new Client(sockfd, true);
+                    connections[group_id]->name = group_id;
+                    connections[group_id]->ipaddr = ip_address;
+                    connections[group_id]->portnr = port_number;
 
                     stored_names.push_back(group_id);
                 }
