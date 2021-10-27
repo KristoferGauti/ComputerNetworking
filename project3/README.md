@@ -33,6 +33,11 @@ For the client run:
 
 The ports are integers and the ip is in the format: xxx.x.x.x and the x's are integers.
 
+Additionally to connect to any server through the client type:
+> CONNECT,SERVER IP ADDRESS,SERVER PORT,GROUP ID
+
+This command should be the first command to send from the client to the server
+
 ## Additional commands for Wireshark
 We were unable to find the wireshark without using localhost so we used that for client&server.pcapng
 
@@ -59,6 +64,19 @@ P3_GROUP_44
 P3_GROUP_41
 P3_GROUP_42
 P3_GROUP_33
+P3_GROUP_200
+P3_GROUP_128
+P3_GROUP_66
+P3_GROUP_43
+P3_GROUP_45
+P3_GROUP_51
+P3_GROUP_85
+P3_GROUP_54
 
 ## BONUSES we did
+AK Groups that we connected to:
 P3_GROUP_26
+P3_GROUP57
+
+We connected our server outside of skel as is evident by the file:
+NATServer.pcapng
