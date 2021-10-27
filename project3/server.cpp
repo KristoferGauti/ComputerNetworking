@@ -663,7 +663,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     }
     else
     {
-        server_msg = "Unknown command: " + message + "\n" + "COMMANDS:\n" + "  - QUERYSERVERS\n" + "  - FETCH_MSG,<GROUP_ID>\n" + "  - SEND_MSG,<GROUP_ID>,<MESSAGE>";
+        server_msg = "Unknown command: " + message + "\n" + "COMMANDS:\n" + "  - QUERYSERVERS\n" + "  - FETCH_MSG,<GROUP_ID>\n" + "  - SEND_MSG,<GROUP_ID>,<MESSAGE>\n" + "  - STORED\n" + "  - CONNECT,<ip address>,<port number>";
     }
 
     char send_buffer[server_msg.size() + 2];
