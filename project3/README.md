@@ -43,10 +43,22 @@ To check the file and verify client&server.pcapng:
 > tcp.port == 43100
 
 ## Groups that we sent or receievd from
-P3_Group_46
-PE_GROUP_38
 Instr_1
-Instr_2 
+Instr_2
+NUMBER
+ORACLE
+P3_Group_46
+P3_GROUP_38
 P3_GROUP_64
+P3_GROUP_99
+P3_GROUP_2
+P3_GROUP_21
+P3_GROUP_15
+P3_GROUP_62
+P3_GROUP_44
+P3_GROUP_41
+P3_GROUP_42
+P3_GROUP_33
 
 ## BONUSES we did
+P3_GROUP_26
