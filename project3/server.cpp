@@ -565,6 +565,8 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     message.erase(0, 1);
     message.erase(message.size() - 1);
     std::cout << "The message we got: " << message << std::endl;
+    logger = "The message we got back: " + message;
+    log_to_file(logger);
 
     if (!message.empty())
     {
