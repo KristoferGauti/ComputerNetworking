@@ -30,6 +30,7 @@
 #include <ifaddrs.h>
 #include <sys/select.h>
 #include <fstream>
+#include <queue>
 
 //Global variables
 #define CHUNK_SIZE 512
@@ -43,7 +44,7 @@
 
 #define BACKLOG 5 // Allowed length of queue of waiting connections
 
-#define MAX_CONNECTIONS 15
+#define MAX_CONNECTIONS 16
 
 /**
  * Simple class for handling connections from clients.
@@ -93,6 +94,8 @@ std::map<std::string, std::vector<std::string>> messages;
 
 // Outgoing messages
 std::map<std::string, std::vector<std::string>> outgoing;
+
+std::queue<int> server_queue;
 
 std::ofstream server_log;
 
@@ -1009,23 +1012,32 @@ int main(int argc, char *argv[])
             // First, accept  any new connections to the server on the listening socket
             if (FD_ISSET(server_listen_sock, &readSockets))
             {
-                serverSock = accept(server_listen_sock, (struct sockaddr *)&client,
+                if(server_queue.size() < MAX_CONNECTIONS){
+                    serverSock = accept(server_listen_sock, (struct sockaddr *)&client,
 
-                                    &clientLen);
-                printf("accept***\n");
-                // Add new client to the list of open sockets
-                FD_SET(serverSock, &openSockets);
+                                        &clientLen);
+                    printf("accept***\n");
+                    // Add new client to the list of open sockets
+                    FD_SET(serverSock, &openSockets);
 
-                // And update the maximum file descriptor
-                maxfds = std::max(maxfds, serverSock);
+                    // And update the maximum file descriptor
+                    maxfds = std::max(maxfds, serverSock);
 
-                // create a new client to store information.
-                servers[serverSock] = new Client(serverSock, true);
+                    // create a new client to store information.
+                    servers[serverSock] = new Client(serverSock, true);
 
-                // Decrement the number of sockets waiting to be dealt with
-                n--;
+                    // Decrement the number of sockets waiting to be dealt with
+                    n--;
 
-                printf("Client connected on server: %d\n", serverSock);
+                    server_queue.push(serverSock);
+
+                    printf("Client connected on server: %d\n", serverSock);
+                }
+                else{
+                    remSocket = server_queue.front();
+                    server_queue.pop();
+                    closeClient(remSocket, openSockets, maxfds)
+                }
             }
 
             // First, accept  any new connections to the server on the listening socket
