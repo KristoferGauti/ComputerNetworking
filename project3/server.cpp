@@ -43,6 +43,8 @@
 
 #define BACKLOG 5 // Allowed length of queue of waiting connections
 
+#define MAX_CONNECTIONS 15
+
 /**
  * Simple class for handling connections from clients.
  * Client(int socket) - socket to send/receive traffic from client.
@@ -85,6 +87,8 @@ std::map<std::string, std::vector<std::string>> messages;
 
 // Outgoing messages
 std::map<std::string, std::vector<std::string>> outgoing;
+
+std::ofstream server_log;
 
 /*
  * Checks if the messsage received is valid
@@ -224,6 +228,24 @@ int open_socket(int portno, bool is_server_socket = true)
 
 }
 
+std::string DateTime() {
+    time_t      now = time(0);
+    struct tm   tstruct;
+    char        buf[80];
+    tstruct = *localtime(&now);
+    strftime(buf, sizeof(buf), "%Y-%m-%d %X", &tstruct);
+    return buf;
+}
+
+void log_to_file(std::string msg) {
+    std::string filePath = "./message_log.txt";
+    std::string date = DateTime();
+    std::ofstream ofs(filePath.c_str(), std::ios_base::out | std::ios_base::app);
+    ofs << date << '\t' << msg << '\n';
+    ofs.close();
+
+}
+
 int establish_connection(std::string port_nr, std::string ip_addr)
 {
 
@@ -324,6 +346,8 @@ void split_commas(std::vector<std::string> *servers_info, std::vector<std::strin
 void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
 {
     printf("Client closed connection: %d\n", clientSocket);
+    std::string logger = "Client closed connection on server: " + std::to_string(clientSocket);
+    log_to_file(logger);
 
     close(clientSocket);
 
@@ -341,7 +365,20 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
 
 void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer, std::string src_port)
 {
-    // Initialize the string to the command that was received
+	
+    if (!valid_message(buffer))
+    {
+        std::string server_msg = "You are nothing but a scam";
+        char send_buffer[server_msg.size() + 2];
+        construct_message(send_buffer, server_msg);
+        send(clientSocket, send_buffer, server_msg.size() + 2, 0);
+        std::cout << "NOT A VALID MESSAGE" << std::endl;
+        std::string logger = "NOT A VALID MESSAGE";
+        log_to_file(logger);
+        return;
+    }
+	
+	// Initialize the string to the command that was received
     std::string message = std::string(buffer);
     message.erase(0, 1);
     message.erase(message.size() - 1);
@@ -527,6 +564,8 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
     char send_buffer[server_msg.size() + 2];
     construct_message(send_buffer, server_msg);
+	std::string logger = "SENDING: " + server_msg + " to group: " + tokens[1];
+    log_to_file(logger);
     send(clientSocket, send_buffer, server_msg.size() + 2, 0);
 }
 
@@ -579,7 +618,8 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
     }
     else if (tokens[0].compare("SERVERS") == 0)
     {
-
+		std::string log = tokens[1] + "GETS: " + message;
+        log_to_file(log);
         std::vector<std::string> servers_info;
 
         server_vector(message, &servers_info);
@@ -795,6 +835,8 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         }
 
         construct_message(send_buffer, response);
+		logger = "SENDING: " + server_msg + " to group: " + tokens[1];
+    	log_to_file(logger);
 
         if (send(serverSocket, send_buffer, response.size() + 2, 0) < 0)
         {
@@ -891,6 +933,8 @@ int main(int argc, char *argv[])
 
     // Setup socket for server to listen to
     server_listen_sock = open_socket(atoi(argv[1]), true);
+	std::string logger = "Listen failed on port: " + std::string(argv[1]);
+    log_to_file(logger);
     printf("Server listening on port: %d\n", serverPort);
 
     if (listen(server_listen_sock, BACKLOG) < 0)
@@ -915,6 +959,8 @@ int main(int argc, char *argv[])
     if (listen(client_listen_sock, BACKLOG) < 0)
     {
         printf("Listen failed on port %s\n", argv[1]);
+		std::string logger = "Listen failed on port: " + std::string(argv[1]);
+        log_to_file(logger);
         exit(0);
     }
     else
@@ -943,6 +989,8 @@ int main(int argc, char *argv[])
         if (n < 0)
         {
             perror("select failed - closing down\n");
+			std::string logger = "select failed - closing down";
+            log_to_file(logger);
             FINISHED = true;
         }
         else
@@ -968,6 +1016,8 @@ int main(int argc, char *argv[])
                 n--;
 
                 printf("Client connected on server: %d\n", serverSock);
+				std::string logger = "Client connected on server: " + std::to_string(serverSock);
+                log_to_file(logger);
             }
 
             // First, accept  any new connections to the server on the listening socket
@@ -989,6 +1039,8 @@ int main(int argc, char *argv[])
                 n--;
 
                 printf("Client connected on server: %d\n", clientSock);
+				std::string logger = "Client connected on server: " + std::to_string(clientSock);
+                log_to_file(logger);
             }
 
             // Now check for commands from clients(the servers that are already connected)
