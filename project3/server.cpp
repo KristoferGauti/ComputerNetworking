@@ -856,8 +856,9 @@ void sendKeepAlive(){
     // check if we have some message stored for a server
     // send to the server KEEPALIVE,how many messages
 
-    std::this_thread::sleep_for(std::chrono::minutes(2));
-    std::this_thread::sleep_for(std::chrono::seconds (30));
+    //std::this_thread::sleep_for(std::chrono::minutes(2));
+    //std::this_thread::sleep_for(std::chrono::seconds (30));
+    sleep(150);
     bool FINISHED = false;
     while (!FINISHED)
     {
@@ -889,10 +890,10 @@ void sendKeepAlive(){
 
 // Sends on QUERYSERVERS on 7:30 minutes interval
 void sendUpdates(std::string port){
-    std::this_thread::sleep_for(std::chrono::minutes(7));
-    std::this_thread::sleep_for(std::chrono::seconds (30));
+    //std::this_thread::sleep_for(std::chrono::minutes(7));
+    //std::this_thread::sleep_for(std::chrono::seconds (30));
     //sleep(10);
-
+    sleep(450);
 
 
         for (auto const &pair : servers)
