@@ -29,6 +29,7 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 #include <sys/select.h>
+#include <fstream>
 
 //Global variables
 #define CHUNK_SIZE 512
@@ -93,6 +94,8 @@ std::map<std::string, std::vector<std::string>> messages;
 std::map<std::string, std::vector<std::string>> outgoing;
 
 std::ofstream server_log;
+
+std::string logger;
 
 /*
  * Checks if the messsage received is valid
@@ -578,8 +581,6 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
         tokens.push_back(token);
     }
 
-    std::string server_msg = "";
-
     if ((tokens[0].compare("QUERYSERVERS") == 0) && tokens.size() == 2 || tokens.size() == 4)
     {
         server_msg = "SERVERS,P3_GROUP_7," + get_local_ip() + "," + src_port + ";";
@@ -750,6 +751,7 @@ void serverCommand(int serverSocket, fd_set *openSockets, int *maxfds, char *buf
 
             char send_buffer[message.size() + 2];
             construct_message(send_buffer, message);
+            int connection_socket = establish_connection(portnrto, ipAddrto);
 
             if (send(connection_socket, send_buffer, message.size() + 2, 0) < 0)
             {
@@ -847,9 +849,9 @@ void sendKeepAlive(){
 
     std::this_thread::sleep_for(std::chrono::minutes(2));
     std::this_thread::sleep_for(std::chrono::seconds (30));
+    bool FINISHED = false;
     while (!FINISHED)
     {
-        std::this_thread::sleep_for(std::chrono::minutes(1));
         for (auto const &pair : servers)
         {
             if (messages.count(pair.second->name) >= 0)
@@ -864,8 +866,11 @@ void sendKeepAlive(){
                     perror("Sending message failed");
                     break;
                 }
+                std::cout << "KEEPALIVE," + std::to_string(storedmessages.size()) << std::endl;
+                logger = "KEEPALIVE," + std::to_string(storedmessages.size());
+                log_to_file(logger);
             }
-            std::cout << "KEEPALIVE," + std::to_string(storedmessages.size()) << std::endl;
+            //std::cout << "KEEPALIVE," + std::to_string(storedmessages.size()) << std::endl;
         }
     }
 }
