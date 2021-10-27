@@ -904,7 +904,7 @@ void sendUpdates(std::string port){
 
 int main(int argc, char *argv[])
 {
-    
+
     bool FINISHED;
     int server_listen_sock;
     int client_listen_sock;
@@ -931,8 +931,6 @@ int main(int argc, char *argv[])
 
     // Setup socket for server to listen to
     server_listen_sock = open_socket(atoi(argv[1]), true);
-	std::string logger = "Listen failed on port: " + std::string(argv[1]);
-    log_to_file(logger);
     printf("Server listening on port: %d\n", serverPort);
 
     if (listen(server_listen_sock, BACKLOG) < 0)
@@ -967,25 +965,6 @@ int main(int argc, char *argv[])
         maxfds = client_listen_sock;
     }
 
-    clientPort = serverPort + 1;
-    client_listen_sock = open_socket(atoi(argv[1]) + 1, true);
-    printf("Client listening on port: %d\n", clientPort);
-
-    if (listen(client_listen_sock, BACKLOG) < 0)
-    {
-        printf("Listen failed on port %s\n", argv[1]);
-		std::string logger = "Listen failed on port: " + std::string(argv[1]);
-        log_to_file(logger);
-        exit(0);
-    }
-    else
-    {
-        // Add listen socket to socket set we are monitoring
-        // Enables the server_listen_sock to enter "loops" where it listens for events
-        FD_SET(client_listen_sock, &openSockets);
-        maxfds = client_listen_sock;
-    }
-
     FINISHED = false;
     std::thread keepAlive(sendKeepAlive);
     std::string port = std::string(argv[1]);
@@ -1004,8 +983,6 @@ int main(int argc, char *argv[])
         if (n < 0)
         {
             perror("select failed - closing down\n");
-			std::string logger = "select failed - closing down";
-            log_to_file(logger);
             FINISHED = true;
         }
         else
@@ -1031,8 +1008,6 @@ int main(int argc, char *argv[])
                 n--;
 
                 printf("Client connected on server: %d\n", serverSock);
-				std::string logger = "Client connected on server: " + std::to_string(serverSock);
-                log_to_file(logger);
             }
 
             // First, accept  any new connections to the server on the listening socket
@@ -1054,8 +1029,6 @@ int main(int argc, char *argv[])
                 n--;
 
                 printf("Client connected on server: %d\n", clientSock);
-				std::string logger = "Client connected on server: " + std::to_string(clientSock);
-                log_to_file(logger);
             }
 
             // Now check for commands from clients(the servers that are already connected)
@@ -1119,7 +1092,6 @@ int main(int argc, char *argv[])
             }
         }
     }
-
     keepAlive.join();
     Updates.join();
 }
