@@ -56060,3 +56060,9 @@ COMMANDS:
 2021-10-27 12:26:03	Client closed connection on server: 5
 2021-10-27 13:28:27	The message we got back: QUERYSERVERS,P3_GROUP_64,130.208.213.145,4164
 2021-10-27 13:29:18	Client closed connection on server: 5
+2021-10-27 13:44:21	KEEPALIVE,0 to group
+2021-10-27 13:44:51	The message we got back: QUERYSERVERS,P3_GROUP_69,130.208.243.61,4007
+2021-10-27 13:45:06	Client closed connection on server: 5
+2021-10-27 13:51:49	The message we got back: QUERYSERVERS,P3_GROUP_64,130.208.213.145,4164
+2021-10-27 13:54:19	KEEPALIVE,0 to group
+2021-10-27 13:54:43	Client closed connection on server: 5
